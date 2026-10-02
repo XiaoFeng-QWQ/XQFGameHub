@@ -1,0 +1,724 @@
+/* ============================================================
+   XQFGameHub —— 账号中心
+   ------------------------------------------------------------
+   设计语言与站内统一：2px 手绘描边 + 不规则圆角 + 错位实心阴影 +
+   便签底色（note-*）+ 虚线分隔。
+   规整化：不使用旋转与胶带，改为「顶部总览 + 两栏管理面板」结构，
+   分区标题复用 hub.css 的 .hub-section-head / .hub-section-title，
+   大面板沿用站内弹窗配方，小数据卡沿用周报 .overview-card 配方。
+   全部取 style.css 变量，暗色主题与活动主题自动适配。
+   ============================================================ */
+
+#account-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 720px;
+}
+
+/* 未登录 / 已登录：单列分区（切换靠内联 display:none ↔ style.display=''） */
+#account-guest,
+#account-main {
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+    width: 100%;
+}
+
+/* ---------- 桌面端横向布局 ---------- */
+
+@media (min-width: 900px) {
+    #account-page {
+        max-width: 1040px;
+    }
+
+    /* 顶部身份总览占满整行，下方管理面板按两栏排列 */
+    #account-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: start;
+        gap: 22px;
+    }
+
+    #account-main > .acc-panel:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .acc-panel--hero {
+        gap: 18px;
+        padding: 24px 26px;
+    }
+
+    .acc-panel--hero .acc-id-row {
+        gap: 20px;
+    }
+
+    .acc-panel--hero .acc-avatar {
+        width: 76px;
+        height: 76px;
+    }
+
+    .acc-panel--hero .acc-name {
+        font-size: 24px;
+    }
+}
+
+/* ---------- 页头（层级锚点） ---------- */
+
+.acc-pagehead {
+    text-align: center;
+}
+
+.acc-eyebrow {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--ink-blue);
+    margin-bottom: 8px;
+}
+
+#account-page .acc-pagehead .hero-title {
+    font-size: 30px;
+    margin-bottom: 6px;
+}
+
+/* ---------- 分区面板（沿用站内弹窗/面板配方） ---------- */
+
+.acc-panel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 22px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 20px 6px 20px 6px / 6px 20px 6px 20px;
+    box-shadow: 4px 6px 0 var(--shadow-md);
+}
+
+.acc-panel--pink {
+    background: var(--note-pink);
+}
+
+.acc-panel--blue {
+    background: var(--note-blue);
+}
+
+.acc-panel--green {
+    background: var(--note-green);
+}
+
+.acc-panel--yellow {
+    background: var(--note-yellow);
+}
+
+/* ---------- 通用小件 ---------- */
+
+.acc-muted {
+    font-size: 12px;
+    color: var(--text-subtle);
+    line-height: 1.6;
+}
+
+.acc-panel-note {
+    font-size: 11px;
+}
+
+/* 文字型按钮（弱化，避免和主按钮抢注意力） */
+.acc-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--ink-blue);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-underline-offset: 3px;
+    white-space: nowrap;
+}
+
+.acc-link-btn:disabled {
+    color: var(--text-aa);
+    cursor: default;
+    text-decoration: none;
+}
+
+.acc-link-btn .icon {
+    width: 1em;
+    height: 1em;
+}
+
+/* ============================================================
+   ① 身份卡（页面主视觉）
+   ============================================================ */
+
+.acc-id-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.acc-avatar {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--ink-blue);
+    background: var(--surface-white);
+    background-size: cover;
+    background-position: center;
+    border: 2px solid var(--ink-black);
+    border-radius: 50%;
+    box-shadow: 2px 3px 0 var(--shadow-sm);
+}
+
+.acc-id-info {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.acc-name-line {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.acc-name {
+    font-size: 23px;
+    font-weight: bold;
+    word-break: break-all;
+}
+
+.acc-disc {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.acc-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 7px;
+}
+
+.acc-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border: 1.5px solid var(--ink-black);
+    border-radius: 10px 3px 10px 3px;
+    background: var(--surface-white);
+}
+
+.acc-tag.is-special {
+    background: var(--ink-blue);
+    color: var(--surface-white);
+    border-color: var(--ink-blue);
+}
+
+.acc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 9px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.acc-meta b {
+    color: var(--ink-black);
+    font-weight: bold;
+    word-break: break-all;
+}
+
+.acc-hero-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+    padding-top: 12px;
+    border-top: 2px dashed var(--border-light);
+}
+
+.acc-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* ---------- ② 我的标签：标签库 + 佩戴选择 ---------- */
+
+.acc-tag-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.acc-tag-group-label {
+    font-size: 11px;
+    color: var(--text-subtle);
+    letter-spacing: 1px;
+}
+
+.acc-tag-group .worn-tag-chip {
+    flex-shrink: 0;
+}
+
+.acc-tag-status {
+    min-height: 18px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.acc-tag-status.is-success {
+    color: var(--success);
+}
+
+.acc-tag-status.is-error {
+    color: var(--danger);
+}
+
+.acc-tag-save {
+    width: 100%;
+    justify-content: center;
+    font-size: 13px;
+    padding: 8px 14px;
+}
+
+/* ---------- 表单：纵向输入行 ---------- */
+
+#account-page .input-line {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#account-page .input-line label {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+
+#account-page .input-line input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 11px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--ink-black);
+    background: var(--bg-input);
+    border: 2px solid var(--ink-black);
+    border-radius: 8px 3px 8px 3px;
+    outline: none;
+}
+
+#account-page .input-line input:focus {
+    border-color: var(--ink-blue);
+}
+
+#account-page .input-line input::placeholder {
+    color: var(--text-aa);
+}
+
+/* 主按钮：整宽、居中 */
+.acc-cta {
+    width: 100%;
+    justify-content: center;
+    font-size: 15px;
+    padding: 10px 0;
+}
+
+/* 横向输入 + 按钮 */
+.acc-inline {
+    display: flex;
+    gap: 8px;
+}
+
+.acc-inline input {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 9px 11px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink-black);
+    background: var(--bg-input);
+    border: 2px solid var(--ink-black);
+    border-radius: 8px 3px 8px 3px;
+    outline: none;
+}
+
+.acc-inline .doodle-btn {
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 6px 16px;
+}
+
+.acc-oauth-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* ---------- 折叠区 ---------- */
+
+.acc-fold {
+    width: 100%;
+}
+
+.acc-fold-toggle {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    font-size: 13px;
+    font-weight: bold;
+    font-family: inherit;
+    color: var(--ink-blue);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+}
+
+.acc-fold-arrow {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    transition: transform 0.18s ease;
+}
+
+/* 展开时翻转箭头（功能所需，非装饰性旋转） */
+.acc-fold-toggle[aria-expanded="true"] .acc-fold-arrow {
+    transform: rotate(180deg);
+}
+
+.acc-fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 2px dashed var(--border-light);
+}
+
+/* ---------- ① 身份与战绩：小数据卡（沿用周报 .overview-card 配方） ---------- */
+
+.acc-stat-row {
+    display: flex;
+    gap: 10px;
+}
+
+.acc-stat {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 12px 6px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    box-shadow: 3px 4px 0 var(--shadow-md);
+}
+
+.acc-stat b {
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 1.2;
+    color: var(--ink-blue);
+}
+
+.acc-stat span {
+    font-size: 11px;
+    color: var(--text-subtle);
+}
+
+/* ---------- ③ 第三方绑定 ---------- */
+
+.acc-oauth-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+/* 绑定行（由 account.js 渲染） */
+.oauth-bind-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 8px 3px 8px 3px;
+    margin-bottom: 6px;
+}
+
+.oauth-bind-name {
+    font-size: 13px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oauth-bind-email {
+    font-size: 11px;
+    color: var(--text-subtle);
+    margin-left: 6px;
+}
+
+.oauth-bind-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* ---------- ⑤ 账号安全：退出登录 ---------- */
+
+.acc-danger-zone {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 2px;
+    padding-top: 14px;
+    border-top: 2px dashed var(--border-light);
+}
+
+.acc-danger-zone .doodle-btn {
+    font-size: 13px;
+}
+
+/* ---------- ④ 表情管理 ---------- */
+
+.acc-sticker-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.acc-sticker-toolbar .doodle-btn {
+    font-size: 13px;
+    padding: 7px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.acc-sticker-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.acc-sticker-tab {
+    font-size: 12px;
+    font-family: inherit;
+    padding: 6px 14px;
+    color: var(--ink-black);
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    cursor: pointer;
+    transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.acc-sticker-tab:hover {
+    transform: translateY(-1px);
+}
+
+.acc-sticker-tab.is-active {
+    background: var(--note-yellow);
+    box-shadow: 2px 2px 0 var(--shadow-md);
+}
+
+.acc-sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: 12px;
+    min-height: 40px;
+}
+
+.acc-sticker-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-subtle);
+    padding: 26px 10px;
+    border: 2px dashed var(--border-light);
+    border-radius: 10px 3px 10px 3px / 3px 10px 3px 10px;
+}
+
+.acc-sticker-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 76px;
+    padding: 5px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 10px 3px 10px 3px / 3px 10px 3px 10px;
+    box-shadow: 2px 3px 0 var(--shadow-sm);
+}
+
+.acc-sticker-item img {
+    width: 100%;
+    max-width: 64px;
+    max-height: 64px;
+    object-fit: contain;
+    display: block;
+}
+
+.acc-sticker-badge {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-align: center;
+    color: var(--surface-white);
+    padding: 2px 0;
+    border-radius: 0 0 8px 2px / 0 0 2px 8px;
+}
+
+.acc-sticker-badge.is-pending {
+    background: var(--warn);
+}
+
+.acc-sticker-badge.is-rejected {
+    background: var(--danger);
+}
+
+.acc-sticker-del {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--surface-white);
+    background: var(--danger);
+    border: 2px solid var(--ink-black);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.acc-sticker-del:hover {
+    transform: scale(1.12) rotate(-8deg);
+}
+
+.acc-sticker-del .icon,
+.acc-sticker-add .icon {
+    width: 12px;
+    height: 12px;
+}
+
+.acc-sticker-add {
+    position: absolute;
+    bottom: -9px;
+    right: -9px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--surface-white);
+    background: var(--ink-blue);
+    border: 2px solid var(--ink-black);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.acc-sticker-add:hover {
+    transform: scale(1.12) rotate(8deg);
+}
+
+/* ---------- 加载 ---------- */
+
+.acc-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 48px 0;
+}
+
+/* ---------- 响应式 ---------- */
+
+@media (max-width: 620px) {
+    #account-guest,
+    #account-main {
+        gap: 20px;
+    }
+
+    #account-page .acc-pagehead .hero-title {
+        font-size: 26px;
+    }
+
+    .acc-panel {
+        padding: 18px 16px;
+    }
+
+    .acc-id-row {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+
+    .acc-name-line,
+    .acc-tag-row,
+    .acc-meta {
+        justify-content: center;
+    }
+
+    .acc-hero-foot {
+        justify-content: center;
+    }
+
+    .acc-hero-actions {
+        justify-content: center;
+    }
+
+    .acc-stat-row {
+        gap: 8px;
+    }
+
+    .acc-stat b {
+        font-size: 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .acc-fold-arrow {
+        transition: none;
+    }
+
+    .acc-panel .doodle-btn:hover {
+        transform: none;
+    }
+}

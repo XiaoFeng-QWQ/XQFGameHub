@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>全服周报 · XQFGameHub</title>
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="preconnect" href="https://s4.zstatic.net" crossorigin>
+    <link rel="stylesheet" href="/style.css?v=">
+    <link rel="stylesheet" href="/weekly-report/weekly-report.css?v=">
+    <link rel="stylesheet" href="/hub.css?v=">
+    <script src="/shared.js?v="></script>
+    <script src="/hub-nav.js?v="></script>
+</head>
+
+<body>
+
+    <div id="announcement-area"></div>
+
+    <header>
+        <button class="doodle-btn" id="btn-back" style="border-radius: 50%; padding: 10px;"
+            onclick="window.location.href='/'">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+        </button>
+
+        <div class="logo-text">
+            <svg class="icon" viewBox="0 0 24 24"
+                style="width:24px;height:24px;margin-right:8px;color:var(--ink-blue);">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            XQFGameHub · 全服周报
+        </div>
+        <div class="header-actions">
+            <div id="hub-nav"></div>
+            <button class="doodle-btn" id="btn-theme" title="主题切换" style="padding:8px 8px;">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5" />
+                    <path d="M12 1v2" />
+                    <path d="M12 21v2" />
+                    <path d="M4.22 4.22l1.42 1.42" />
+                    <path d="M18.36 18.36l1.42 1.42" />
+                    <path d="M1 12h2" />
+                    <path d="M21 12h2" />
+                    <path d="M4.22 19.78l1.42-1.42" />
+                    <path d="M18.36 5.64l1.42-1.42" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section id="report-panel" style="padding-top: 30px;">
+            <div class="sticky-hero">
+                <div style="color:var(--ink-blue);font-size:16px;margin-bottom:8px;"># 玩家周报</div>
+                <h1 class="hero-title">周报</h1>
+                <p class="hero-subtitle" id="report-period"></p>
+            </div>
+
+            <div id="loading-indicator" class="report-loading">
+                <div class="spinner"></div>
+                <p>加载中...</p>
+            </div>
+
+            <div id="report-content" style="display:none;">
+                <div class="week-picker-row">
+                    <label class="week-label">选择周：</label>
+                    <select id="week-select" class="doodle-select"></select>
+                </div>
+                <div id="overview-cards" class="overview-grid"></div>
+                <div class="sort-tabs" id="sort-tabs"></div>
+                <div id="player-list" class="player-list"></div>
+                <div id="pagination" class="pagination"></div>
+            </div>
+
+            <div id="error-state" class="report-error" style="display:none;"></div>
+        </section>
+    </main>
+
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="caab6c43-2fba-4eb5-9654-e1fe179ce0f2"></script>
+    <script src="/weekly-report/weekly-report.js?v="></script>
+</body>
+
+</html>

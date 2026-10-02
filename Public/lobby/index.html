@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>公共聊天室</title>
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="description" content="全局匿名聊天大厅，自由发言、表情贴纸、点歌互动。">
+    <meta property="og:title" content="公共聊天室 · XQFGameHub">
+    <meta property="og:description" content="全局匿名聊天大厅，自由发言、表情贴纸、点歌互动。">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/favicon.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="preconnect" href="https://s4.zstatic.net" crossorigin>
+    <link rel="stylesheet" href="/style.css?v=">
+    <link rel="stylesheet" href="/lobby/lobby.css?v=">
+    <link rel="stylesheet" href="/hub.css?v=">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.8.4/plyr.css">
+    <script src="https://cdn.plyr.io/3.8.4/plyr.js"></script>
+    <script src="https://testingcf.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+    <script src="/shared.js?v="></script>
+    <script src="/hub-nav.js?v="></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.12/purify.min.js"></script>
+</head>
+
+<body>
+
+    <div id="announcement-area"></div>
+
+    <header>
+        <button class="doodle-btn" id="btn-back" style="border-radius: 50%; padding: 10px;" title="返回">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+        </button>
+
+        <div class="logo-text">
+            <svg class="icon" viewBox="0 0 24 24" style="width:1.1em;height:1.1em;">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            XQFGameHub · 公共聊天室
+        </div>
+
+        <div class="header-actions" data-hub-nav="off">
+            <button id="lobby-btn-song" class="lobby-song-btn" title="点歌">
+                <svg class="icon" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                </svg>
+            </button>
+            <button id="lobby-btn-notify" class="lobby-notify-btn" title="通知已关闭">
+                <svg class="icon" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+            </button>
+            <button class="doodle-btn" id="lobby-btn-sysmsg" title="系统消息显示" style="padding:8px 8px;">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <line x1="4" y1="21" x2="4" y2="14" />
+                    <line x1="4" y1="10" x2="4" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12" y2="3" />
+                    <line x1="20" y1="21" x2="20" y2="16" />
+                    <line x1="20" y1="12" x2="20" y2="3" />
+                    <line x1="1" y1="14" x2="7" y2="14" />
+                    <line x1="9" y1="8" x2="15" y2="8" />
+                    <line x1="17" y1="16" x2="23" y2="16" />
+                </svg>
+            </button>
+            <div class="header-more">
+                <button class="doodle-btn" id="lobby-btn-more" title="更多" style="padding:8px 8px;">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5" />
+                        <circle cx="12" cy="12" r="1.5" />
+                        <circle cx="12" cy="19" r="1.5" />
+                    </svg>
+                </button>
+                <div class="header-more-menu" id="lobby-header-more-menu">
+                    <button class="doodle-btn" id="btn-theme" title="主题切换">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="5" />
+                            <path d="M12 1v2" />
+                            <path d="M12 21v2" />
+                            <path d="M4.22 4.22l1.42 1.42" />
+                            <path d="M18.36 18.36l1.42 1.42" />
+                            <path d="M1 12h2" />
+                            <path d="M21 12h2" />
+                            <path d="M4.22 19.78l1.42-1.42" />
+                            <path d="M18.36 5.64l1.42-1.42" />
+                        </svg>
+                        <span>主题切换</span>
+                    </button>
+                    <button class="doodle-btn" id="btn-toggle-users" title="在线用户">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        <span>在线用户</span>
+                    </button>
+                    <a class="doodle-btn" id="lobby-btn-md-help" href="https://docs.xiaofengqwq.com/%E5%9B%BE%E7%81%B5%E6%B5%8B%E8%AF%95" target="_blank" rel="noopener noreferrer" title="聊天室 MD 语法教程">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <path d="M14 2v6h6" />
+                            <path d="M9 15h6" />
+                            <path d="M9 11h2" />
+                        </svg>
+                        <span>MD 教程</span>
+                    </a>
+                    <button class="doodle-btn" id="btn-my-macros" title="我的宏（自定义 MD 组件模板）">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                            <rect x="8" y="2" width="8" height="4" rx="1" />
+                            <path d="M9 12h6" />
+                            <path d="M9 16h6" />
+                        </svg>
+                        <span>我的宏</span>
+                    </button>
+                    <button class="doodle-btn" id="btn-temp-invite" title="临时聊天">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        <span>临时聊天</span>
+                    </button>
+                    <button class="doodle-btn" id="lobby-btn-bot" title="聊天室 BOT" style="display:none;">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <rect x="4" y="4" width="16" height="16" rx="2" />
+                            <rect x="9" y="9" width="6" height="6" />
+                            <line x1="9" y1="1" x2="9" y2="4" />
+                            <line x1="15" y1="1" x2="15" y2="4" />
+                            <line x1="9" y1="20" x2="9" y2="23" />
+                            <line x1="15" y1="20" x2="15" y2="23" />
+                        </svg>
+                        <span>聊天室 BOT</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main style="padding: 0;">
+        <section id="lobby-match-panel">
+            <div class="sticky-hero">
+                <div style="color:var(--ink-blue);font-size:16px;margin-bottom:8px;"># 在线实验 01</div>
+                <h1 class="hero-title">公共聊天室</h1>
+                <p class="hero-subtitle">实时聊天 · 全服公告 · 表情互动</p>
+            </div>
+
+            <div id="identity-card" class="lobby-identity-card" style="display:none;">
+                <div class="id-card-inner">
+                    <div class="id-icon">?</div>
+                    <h2>未检测到身份</h2>
+                    <p>账号能力统一在账号中心处理，登录后自动回到本页</p>
+                    <a id="lobby-btn-go-account" class="doodle-btn btn-full" href="/account?redirect=/lobby"
+                        style="margin-top:16px;font-size:16px;text-decoration:none;display:flex;align-items:center;justify-content:center;">
+                        前往账号中心
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <div id="lobby-main">
+            <div class="lobby-container">
+
+                <div id="lobby-has-identity" class="lobby-chat" style="display:none;">
+                    <div id="lobby-loading" class="lobby-loading">
+                        <svg class="bili-spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.4 31.4" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/></circle></svg>
+                        <span>正在进入聊天室…</span>
+                    </div>
+                    <div id="lobby-lyrics" class="lobby-lyrics"></div>
+                    <div id="lobby-messages" class="lobby-messages"></div>
+                    <button id="lobby-btn-scroll-bottom" class="lobby-scroll-bottom-btn" type="button" title="返回底部"
+                        aria-label="返回底部">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <line x1="12" y1="4" x2="12" y2="17" />
+                            <polyline points="5.5 11 12 17.5 18.5 11" />
+                        </svg>
+                    </button>
+
+                    <div class="lobby-input-area">
+                        <div id="lobby-reply-preview" class="lobby-reply-preview">
+                            <span class="preview-label">回复</span>
+                            <span class="preview-text" id="lobby-reply-preview-text"></span>
+                            <button class="preview-cancel" id="lobby-reply-preview-cancel">&times;</button>
+                        </div>
+                        <div class="lobby-input-row">
+                            <div class="input-inner">
+                                <textarea id="lobby-chat-input" placeholder="说点什么..." rows="1" maxlength="4000"
+                                    autocomplete="off"></textarea>
+                                <button class="sticker-btn" id="lobby-btn-image" title="发送图片">
+                                    <svg class="icon" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                        <rect x="3" y="3" width="18" height="18" rx="3" />
+                                        <circle cx="8.5" cy="8.5" r="1.5" />
+                                        <path d="M21 15l-5-5L5 21" />
+                                    </svg>
+                                </button>
+                                <button class="sticker-btn" id="lobby-btn-sticker" title="发送表情">
+                                    <svg class="icon" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                        <rect x="3" y="3" width="18" height="18" rx="3" />
+                                        <circle cx="8.5" cy="8.5" r="1.5" />
+                                        <circle cx="15.5" cy="8.5" r="1.5" />
+                                        <path d="M8 14c0 0 1.5 2 4 2s4-2 4-2" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <button id="lobby-btn-send" class="doodle-btn send-btn">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <line x1="22" y1="2" x2="11" y2="13" />
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                </svg>
+                                发送
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div id="lobby-users-panel" class="lobby-users" style="display:none;">
+                    <h3>
+                        在线 <span class="count-num" id="lobby-users-count">0</span>
+                    </h3>
+                    <div id="lobby-users-list"></div>
+                </div>
+
+                <div id="lobby-song-panel" class="lobby-song-panel" style="display:none;">
+                    <div class="song-panel-header">
+                        <h3>点歌列表</h3>
+                        <div class="song-panel-toggles">
+                            <label class="song-listen-toggle" title="开启后自动同步播放大厅歌曲">
+                                <input type="checkbox" id="lobby-song-listen-toggle" checked>
+                                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                                <span class="toggle-label">听歌</span>
+                            </label>
+                            <label class="song-listen-toggle" title="同步模式：跟随大厅歌曲同步播放；个人模式：不跟随大厅同步">
+                                <input type="checkbox" id="lobby-song-sync-toggle" checked>
+                                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                                <span class="toggle-label" id="lobby-song-sync-label">同步模式</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="lobby-song-playing-info" class="lobby-song-playing-info"></div>
+                    <div class="song-play-mode" id="lobby-song-play-mode" style="display:none;">
+                        <span class="song-play-mode-title">播放模式</span>
+                        <div class="song-play-mode-options" id="lobby-song-play-mode-options">
+                            <button type="button" class="song-play-mode-btn" data-mode="loop">列表循环</button>
+                            <button type="button" class="song-play-mode-btn" data-mode="shuffle">随机播放</button>
+                            <button type="button" class="song-play-mode-btn" data-mode="order">顺序播放</button>
+                        </div>
+                    </div>
+                    <div id="lobby-song-playlist" class="lobby-song-playlist"></div>
+                    <div class="lobby-song-search">
+                        <input type="text" id="lobby-song-search-input" placeholder="输入歌名 / 艺人，或粘贴网易云分享链接 / 歌曲ID"
+                            maxlength="50">
+                        <button id="lobby-song-search-btn" class="doodle-btn">搜索</button>
+                        <button id="lobby-song-search-clear" class="doodle-btn" style="display:none;">清空</button>
+                    </div>
+                    <div id="lobby-song-search-results" class="lobby-song-search-results"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="lobby-overlay" style="display:none;"></div>
+
+    <div id="lobby-sticker-picker" class="sticker-picker" style="display:none;">
+        <div class="sticker-picker-header">
+            <span>选择表情</span>
+            <button class="doodle-btn" id="lobby-btn-close-sticker-picker"
+                style="padding:2px 8px;font-size:14px;">&times;</button>
+        </div>
+        <div class="sticker-picker-tabs">
+            <span class="sticker-picker-tab active" data-tab="mine">我的表情</span>
+            <span class="sticker-picker-tab" data-tab="default">默认表情</span>
+        </div>
+        <div class="sticker-picker-body" id="lobby-sticker-picker-body">
+            <div style="text-align:center;color:#999;padding:20px;font-size:13px;">暂无可用表情</div>
+        </div>
+    </div>
+
+
+    <input type="file" id="lobby-image-input" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp"
+        style="display:none;">
+
+    <div id="lobby-sticker-lightbox" style="display:none;">
+        <div class="sticker-lightbox-bg"></div>
+        <img id="lobby-sticker-lightbox-img" alt="">
+        <div class="sticker-lightbox-actions">
+            <button id="lobby-sticker-lightbox-add" class="doodle-btn" style="display:none;">+ 添加到我的表情</button>
+        </div>
+        <button id="lobby-sticker-lightbox-close" class="doodle-btn"
+            style="position:absolute;top:12px;right:12px;padding:4px 8px;font-size:18px;line-height:1;">&times;</button>
+    </div>
+
+    <div id="lobby-sysmsg-panel" class="lobby-sysmsg-panel" style="display:none;">
+        <div class="sysmsg-panel-header">
+            <span>系统消息显示</span>
+            <button class="doodle-btn" id="lobby-btn-close-sysmsg-panel"
+                style="padding:2px 8px;font-size:14px;">&times;</button>
+        </div>
+        <div class="sysmsg-panel-body">
+            <label class="song-listen-toggle">
+                <input type="checkbox" id="lobby-sysmsg-joinleave">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                <span class="toggle-label">进入/退出</span>
+            </label>
+            <label class="song-listen-toggle">
+                <input type="checkbox" id="lobby-sysmsg-revoke">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                <span class="toggle-label">撤回消息</span>
+            </label>
+            <label class="song-listen-toggle">
+                <input type="checkbox" id="lobby-sysmsg-other">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                <span class="toggle-label">其他提示</span>
+            </label>
+            <label class="song-listen-toggle" title="开启后：特定节奏点击屏幕/发送含「奶龙」的消息会触发彩蛋">
+                <input type="checkbox" id="lobby-sysmsg-egg">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                <span class="toggle-label">彩蛋</span>
+            </label>
+        </div>
+    </div>
+
+    <div id="lobby-song-info" class="lobby-song-info" style="display:none;">
+        <div class="song-info-cover">
+            <img id="lobby-song-info-cover" alt="">
+        </div>
+        <div class="song-info-body">
+            <div class="song-info-name" id="lobby-song-info-name"></div>
+            <div class="song-info-artist" id="lobby-song-info-artist"></div>
+            <div class="song-info-progress">
+                <div class="song-info-progress-bar" id="lobby-song-info-progress-bar"></div>
+            </div>
+            <div class="song-info-time" id="lobby-song-info-time"></div>
+            <div class="song-info-adder" id="lobby-song-info-adder"></div>
+            <div class="song-info-next" id="lobby-song-info-next"></div>
+        </div>
+    </div>
+
+    <script src="/lobby/lobby.js?v="></script>
+    <script src="/temp-invite.js?v="></script>
+    <script src="/lobby/lobby-bot.js?v="></script>
+    <script>
+        // 临时聊天邀请面板（发起入口，lobby 已有 lobby 连接接收邀请，这里只启用搜索面板）
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.TempInvite) {
+                window.TempInvite.init({ autoConnect: false });
+                var btn = document.getElementById('btn-temp-invite');
+                if (btn) btn.addEventListener('click', function () { window.TempInvite.openPanel(); });
+            }
+        });
+    </script>
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="caab6c43-2fba-4eb5-9654-e1fe179ce0f2"></script></body>
+
+</html>

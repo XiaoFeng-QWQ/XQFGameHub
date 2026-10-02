@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2c3e50">
+    <title>五子棋</title>
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="description" content="黑白交错演乾坤，在线五子棋对弈。">
+    <meta property="og:title" content="五子棋 · XQFGameHub">
+    <meta property="og:description" content="黑白交错演乾坤，在线五子棋对弈。">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/favicon.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="preconnect" href="https://s4.zstatic.net" crossorigin>
+
+
+
+    <link rel="stylesheet" href="/style.css?v=">
+    <link rel="stylesheet" href="/gomoku/gomoku.css?v=">
+    <link rel="stylesheet" href="/hub.css?v=">
+</head>
+
+<body>
+
+    <div id="announcement-area"></div>
+
+    <header>
+        <button class="doodle-btn" id="btn-back" style="border-radius: 50%; padding: 10px;" title="返回">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+        </button>
+
+        <div class="logo-text">
+            <svg class="icon" viewBox="0 0 24 24">
+                <circle cx="7" cy="7" r="5" fill="currentColor" />
+                <circle cx="17" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.5" />
+                <circle cx="12" cy="17" r="5" fill="none" stroke="currentColor" stroke-width="1.5" />
+                <line x1="2" y1="22" x2="9" y2="15" stroke="currentColor" stroke-width="2" />
+            </svg>
+            XQFGameHub · 五子棋
+        </div>
+        <div class="header-actions">
+            <div id="hub-nav"></div>
+            <button class="doodle-btn" id="btn-theme" title="主题切换" style="padding:8px 8px;">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5" />
+                    <path d="M12 1v2" />
+                    <path d="M12 21v2" />
+                    <path d="M4.22 4.22l1.42 1.42" />
+                    <path d="M18.36 18.36l1.42 1.42" />
+                    <path d="M1 12h2" />
+                    <path d="M21 12h2" />
+                    <path d="M4.22 19.78l1.42-1.42" />
+                    <path d="M18.36 5.64l1.42-1.42" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section id="gomoku-match-panel">
+            <div class="sticky-hero">
+                <div style="color:var(--ink-blue);font-size:16px;margin-bottom:8px;"># 在线实验 03</div>
+                <h1 class="hero-title">棋逢对手</h1>
+                <p class="hero-subtitle">一阴一阳之谓道，黑白交错演乾坤。</p>
+            </div>
+
+            <div id="identity-card" class="lobby-identity-card" style="display:none;">
+                <div class="id-card-inner">
+                    <div class="id-icon">?</div>
+                    <h2>未检测到身份</h2>
+                    <p>账号能力统一在账号中心处理，登录后自动回到本页</p>
+                    <button id="identity-btn-go-home" class="doodle-btn btn-full"
+                        style="margin-top:16px;font-size:16px;">
+                        前往账号中心
+                    </button>
+                    <button id="identity-btn-back" class="doodle-btn btn-full"
+                        style="margin-top:8px;font-size:15px;border-style:dashed;">
+                        返回菜单
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-menu">
+            <div class="doodle-border menu-card">
+                <h1 class="menu-title">棋逢对手</h1>
+                <p class="menu-subtitle">一阴一阳之谓道，黑白交错演乾坤。</p>
+                <div class="menu-btns">
+                    <button class="doodle-btn menu-btn" id="btn-local-ai">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                            <line x1="8" y1="21" x2="16" y2="21" />
+                            <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                        单机AI弈棋
+                    </button>
+                    <button class="doodle-btn menu-btn" id="btn-online">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        真人 在线对弈
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-setup" style="display:none;">
+            <div class="doodle-border setup-card">
+                <h2 id="setup-title">对局设置</h2>
+
+                <div class="setting-group">
+                    <div class="setting-label">游戏模式</div>
+                    <div class="radio-row">
+                        <label class="radio-item"><input type="radio" name="mode" value="normal"
+                                checked><span>普通对弈</span></label>
+                        <label class="radio-item"><input type="radio" name="mode" value="time"><span>限时决断</span></label>
+                    </div>
+                </div>
+
+                <div class="setting-group" id="time-setting" style="display:none;">
+                    <div class="setting-label">时间限制</div>
+                    <div class="radio-row">
+                        <label class="radio-item"><input type="radio" name="timeLimit" value="180"
+                                checked><span>3分钟</span></label>
+                        <label class="radio-item"><input type="radio" name="timeLimit"
+                                value="300"><span>5分钟</span></label>
+                        <label class="radio-item"><input type="radio" name="timeLimit"
+                                value="600"><span>10分钟</span></label>
+                    </div>
+                </div>
+
+                <div class="setting-group" id="ai-difficulty-group">
+                    <div class="setting-label">电脑棋力</div>
+                    <div class="radio-row">
+                        <label class="radio-item"><input type="radio" name="difficulty"
+                                value="beginner"><span>初出茅庐</span></label>
+                        <label class="radio-item"><input type="radio" name="difficulty" value="normal"
+                                checked><span>棋院国手</span></label>
+                        <label class="radio-item"><input type="radio" name="difficulty"
+                                value="master"><span>一代宗师</span></label>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-label">棋盘纵横</div>
+                    <div class="radio-row">
+                        <label class="radio-item"><input type="radio" name="boardSize"
+                                value="11"><span>11×11</span></label>
+                        <label class="radio-item"><input type="radio" name="boardSize"
+                                value="13"><span>13×13</span></label>
+                        <label class="radio-item"><input type="radio" name="boardSize" value="15"
+                                checked><span>15×15</span></label>
+                        <label class="radio-item"><input type="radio" name="boardSize"
+                                value="custom"><span>自定义</span></label>
+                    </div>
+                    <div id="custom-size-area" class="custom-size-area" style="display:none;">
+                        <input type="number" id="custom-board-size" class="doodle-input" value="17" min="5" max="30"
+                            placeholder="5-30">
+                    </div>
+                </div>
+
+                <div class="setting-group" id="color-group">
+                    <div class="setting-label">执子选择 (黑子先手)</div>
+                    <div class="radio-row">
+                        <label class="radio-item"><input type="radio" name="firstMove" value="host" checked><span
+                                id="color-host-label">玩家执黑</span></label>
+                        <label class="radio-item"><input type="radio" name="firstMove" value="guest"><span
+                                id="color-guest-label">电脑执黑</span></label>
+                    </div>
+                </div>
+
+                <div class="setting-actions">
+                    <button class="doodle-btn" id="btn-setup-back">返回</button>
+                    <button class="doodle-btn" id="btn-setup-start">开局落子</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-wait" style="display:none;">
+            <div class="doodle-border wait-card">
+                <h2>等待落座</h2>
+                <p>对局凭证：</p>
+                <div class="room-code" id="wait-code">-----</div>
+                <p class="hint">将此凭证告知对手，双方即可对弈。</p>
+                <button class="doodle-btn" id="btn-wait-share"
+                    style="margin-top:20px;color:var(--success);border-color:var(--success);">发送到聊天室</button>
+                <button class="doodle-btn" id="btn-wait-cancel"
+                    style="margin-top:10px;color:var(--danger);border-color:var(--danger);">撤去棋盘</button>
+            </div>
+        </section>
+
+        <section id="page-join">
+            <div class="doodle-border join-card">
+                <h2>入局切磋</h2>
+                <p>请输入对方提供的 5 位凭证：</p>
+                <input type="text" id="join-code" class="room-code-input" maxlength="5" autocomplete="off"
+                    placeholder="ABCDE">
+                <div class="setting-actions" style="margin-top:20px;">
+                    <button class="doodle-btn" id="btn-join-back">返回</button>
+                    <button class="doodle-btn" id="btn-join-room">落 座</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-game" style="display:none;">
+            <div class="game-layout">
+                <div class="game-board-area">
+                    <div class="game-info-bar">
+                        <div class="player-info" id="info-you">
+                            <span class="stone-dot black"></span>
+                            <span>你</span>
+                        </div>
+                        <div class="turn-display" id="turn-display">黑棋行棋</div>
+                        <div class="timer-display" id="timer-display" style="display:none;">03:00</div>
+                        <div class="player-info" id="info-opponent">
+                            <span class="stone-dot white"></span>
+                            <span id="opponent-name">对手</span>
+                        </div>
+                    </div>
+                    <canvas id="boardCanvas"></canvas>
+                    <div class="game-actions" id="game-actions">
+                        <button class="doodle-btn" id="btn-surrender"
+                            style="color:var(--danger);border-color:var(--danger);">推枰认输</button>
+                        <button class="doodle-btn" id="btn-rematch" style="display:none;">再弈一局</button>
+                        <button class="doodle-btn" id="btn-game-leave" style="color:var(--text-subtle);">退出</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 对局内聊天：右下角气泡按钮 + 弹出浮层 -->
+            <button class="chat-toggle" id="chat-toggle" type="button" aria-label="聊天" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" style="width:24px;height:24px;">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span class="chat-toggle-badge" id="chat-toggle-badge" style="display:none;"></span>
+            </button>
+
+            <div class="game-chat-area" id="chat-area" style="display:none;">
+                <div class="chat-header">
+                    <span>飞鸽传书</span>
+                    <div class="chat-header-actions">
+                        <span id="spectator-badge" style="display:none;font-size:12px;color:var(--warn);">观战中</span>
+                        <button class="chat-close" id="chat-close" type="button" aria-label="关闭">&times;</button>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-msg sys">对局开始，落子为定</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="说点什么…" maxlength="300" autocomplete="off">
+                    <button class="doodle-btn" id="btn-chat-send">发送</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div style="text-align:center;padding:12px 20px 20px;font-size:12px;color:var(--text-subtle);">
+        <a href="https://fakeicp.top" target="_blank" title="点击查看 假ICP备 访问量统计">
+          <img src="https://fakeicp.top/api/analytics/badge?site=https://game.xfcode.top/" alt="访问量统计 | fakeicp.top" />
+        </a>
+        <a href="http://wapmz.com/in/292"><img src="http://wapmz.com/cn/big/292" alt="wapmz.com"></a><br>
+        <a href="https://icp.gov.moe/?keyword=20269944" target="_blank">萌ICP备20269944号</a>
+        <a href="https://fakeicp.top/query.html?number=1202612" target="_blank">假ICP备1202612号</a>
+        <br>
+        本项目基于 AGPL 协议开源，欢迎部署或学习：<a href="https://github.com/XiaoFeng-QWQ/TuringTalk" target="_blank" rel="noopener"
+            style="color:var(--ink-blue);text-decoration:underline;">github.com/XiaoFeng-QWQ/TuringTalk</a>
+    </div>
+
+    <script src="/shared.js?v="></script>
+    <script src="/hub-nav.js?v="></script>
+    <script src="/gomoku/gomoku.js?v="></script>
+    <!-- 等待页半屏聊天窗口 -->
+    <div id="gomoku-chat-overlay" style="display:none;">
+        <div id="gomoku-chat-panel">
+            <div class="gomoku-chat-header">
+                <span class="gomoku-chat-title">聊天大厅</span>
+                <button class="gomoku-chat-close" title="关闭">&times;</button>
+            </div>
+            <div id="gomoku-chat-messages"></div>
+            <div class="gomoku-chat-input-row">
+                <button class="gc-sticker-btn" onclick="toggleGomokuSticker()" title="表情">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" style="width:18px;height:18px;">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                        <line x1="9" y1="9" x2="9.01" y2="9" />
+                        <line x1="15" y1="9" x2="15.01" y2="9" />
+                    </svg>
+                </button>
+                <input type="text" id="gomoku-chat-input" placeholder="输入消息...  @可提及" maxlength="1500"
+                    onkeydown="if(event.key==='Enter')sendGomokuChat()">
+                <button class="doodle-btn" onclick="sendGomokuChat()">发送</button>
+            </div>
+            <div id="gomoku-chat-stickers" style="display:none;"></div>
+            <div id="gomoku-chat-at" style="display:none;"></div>
+        </div>
+    </div>
+
+    <div id="gomoku-loading" class="gomoku-loading" style="display:none;">
+        <svg class="gomoku-spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-dasharray="31.4 31.4" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s"
+                    repeatCount="indefinite" />
+            </circle>
+        </svg>
+        <span id="gomoku-loading-text">处理中…</span>
+    </div>
+
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="caab6c43-2fba-4eb5-9654-e1fe179ce0f2"></script>
+</body>
+
+</html>

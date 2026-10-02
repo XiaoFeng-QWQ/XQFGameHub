@@ -1,0 +1,169 @@
+<?php
+
+namespace App\Core;
+
+use App\Controllers\GameController;
+use App\Controllers\OAuthController;
+use App\Config\Config;
+
+/**
+ * 路由器
+ */
+class Router
+{
+    private array $routes = [];
+
+    public function __construct()
+    {
+        $this->initializeRoutes();
+    }
+
+    private function initializeRoutes(): void
+    {
+        $adminPath = '/' . trim(Config::get('Admin.Path', 'admin'), '/');
+
+        $this->routes = [
+            'GET' => [
+                '/' => [GameController::class, 'index'],
+                '/turing' => [GameController::class, 'turingIndex'],
+                '/lobby' => [GameController::class, 'lobbyIndex'],
+                '/temp-chat' => [GameController::class, 'tempChatIndex'],
+                '/gomoku' => [GameController::class, 'gomokuIndex'],
+                '/soup' => [GameController::class, 'soupIndex'],
+                '/weekly-report' => [GameController::class, 'weeklyReportIndex'],
+                '/account' => [GameController::class, 'accountIndex'],
+                '/api/bot/panel' => [GameController::class, 'botPanel'],
+                '/api/account/overview' => [GameController::class, 'accountOverview'],
+                '/api/account/bot-access' => [GameController::class, 'botAccess'],
+                '/api/generate-player-id' => [GameController::class, 'generatePlayerId'],
+                '/api/player-stats' => [GameController::class, 'playerStats'],
+                '/api/chat-history' => [GameController::class, 'chatHistoryList'],
+                '/api/chat-history/detail' => [GameController::class, 'chatHistoryDetail'],
+                '/api/player-profile' => [GameController::class, 'playerProfile'],
+                '/api/player-collections' => [GameController::class, 'playerCollections'],
+                '/api/collection/detail' => [GameController::class, 'collectionDetail'],
+                '/api/collection/by-token' => [GameController::class, 'collectionByToken'],
+                '/api/player-messages' => [GameController::class, 'getMyMessages'],
+                '/api/player/tags' => [GameController::class, 'getMyTags'],
+                '/api/macros' => [GameController::class, 'macrosList'],
+                '/api/temp/users' => [GameController::class, 'tempUsers'],
+                '/api/sticker/list' => [GameController::class, 'listStickers'],
+                '/api/soup/my-puzzles' => [GameController::class, 'soupMyPuzzlesList'],
+                '/api/soup/public-puzzles' => [GameController::class, 'soupPublicPuzzles'],
+                '/api/bot/stickers' => [GameController::class, 'botStickers'],
+                '/api/weekly-report' => [GameController::class, 'weeklyReport'],
+                // 玩家档案 / 公开收藏：属于 1v1 SPA（script.js）内的视图，必须由 turingIndex 渲染
+                '/player/{nickname}' => [GameController::class, 'turingIndex'],
+                '/collection/{token}' => [GameController::class, 'viewPublicCollection'],
+
+                // OAuth 快捷登录
+                '/oauth/login/{provider}' => [OAuthController::class, 'login'],
+                '/oauth/callback/{provider}' => [OAuthController::class, 'callback'],
+                '/oauth/complete' => [OAuthController::class, 'complete'],
+                '/api/oauth/providers' => [OAuthController::class, 'providers'],
+                '/api/oauth/bindings' => [OAuthController::class, 'bindings'],
+                '/api/oauth/pending-info' => [OAuthController::class, 'pendingInfo'],
+                '/api/avatar/{player_id}' => [GameController::class, 'avatar'],
+            ],
+            'POST' => [
+                '/api/upload-userdata' => [GameController::class, 'uploadUserData'],
+                '/api/player-message/hide' => [GameController::class, 'hideMessage'],
+                '/api/player-message/settings' => [GameController::class, 'updateMessageSettings'],
+                '/api/player/worn-tags' => [GameController::class, 'setWornTags'],
+                '/api/chat-history/collect' => [GameController::class, 'setCollection'],
+                '/api/collection/like' => [GameController::class, 'likeCollection'],
+                '/api/sticker/upload' => [GameController::class, 'uploadSticker'],
+                '/api/image/upload' => [GameController::class, 'uploadImage'],
+                '/api/sticker/delete' => [GameController::class, 'deleteSticker'],
+                '/api/sticker/add-to-mine' => [GameController::class, 'addStickerToMine'],
+                '/api/macros' => [GameController::class, 'macrosSave'],
+                '/api/soup/my-puzzles' => [GameController::class, 'soupPuzzleCreate'],
+                '/api/soup/my-puzzles/{id}/share' => [GameController::class, 'soupPuzzleShare'],
+                '/api/macros/delete' => [GameController::class, 'macrosDelete'],
+                '/api/temp/invite' => [GameController::class, 'tempInvite'],
+                '/api/temp/invite/decline' => [GameController::class, 'tempInviteDecline'],
+                '/api/bot/apply' => [GameController::class, 'botApply'],
+                '/api/account/nickname' => [GameController::class, 'accountUpdateNickname'],
+                '/api/bot/panel/nickname' => [GameController::class, 'botPanelNickname'],
+                '/api/bot/panel/key' => [GameController::class, 'botPanelRotateKey'],
+
+                // OAuth 快捷登录（绑定模式用 form POST 携带 token）
+                '/oauth/login/{provider}' => [OAuthController::class, 'login'],
+                '/api/oauth/unbind' => [OAuthController::class, 'unbind'],
+                '/api/oauth/sync-avatar' => [OAuthController::class, 'syncAvatarNow'],
+                '/api/oauth/confirm-create' => [OAuthController::class, 'confirmCreate'],
+                '/api/oauth/cancel' => [OAuthController::class, 'cancel'],
+            ],
+            'PUT' => [
+                '/api/soup/my-puzzles/{id}' => [GameController::class, 'soupPuzzleUpdate'],
+            ],
+            'DELETE' => [
+                '/api/soup/my-puzzles/{id}' => [GameController::class, 'soupPuzzleDelete'],
+            ],
+        ];
+
+        // 从数组批量注册静态资源
+        foreach (GameController::STATIC_RESOURCES as $url => $_) {
+            $this->routes['GET'][$url] = [GameController::class, 'serveStatic'];
+        }
+
+        // 动态添加管理员路由
+        if ($adminPath !== '/') {
+            $this->routes['GET'][$adminPath] = [GameController::class, 'adminPage'];
+            $this->routes['POST'][$adminPath . '/api/login'] = [GameController::class, 'adminLogin'];
+        }
+    }
+
+    public function dispatch(Request $request, Response $response): void
+    {
+        $method = $request->getMethod();
+        $path = $request->getPath();
+
+        // 查找匹配的路由
+        $handler = $this->findRoute($method, $path);
+
+        if ($handler) {
+            $this->executeHandler($handler, $request, $response);
+        } else {
+            $response->setStatusCode(404);
+            $response->setContent('Not Found');
+            $response->send();
+        }
+    }
+
+    private function findRoute(string $method, string $path): ?array
+    {
+        if (!isset($this->routes[$method])) {
+            return null;
+        }
+
+        foreach ($this->routes[$method] as $route => $handler) {
+            if ($this->matchRoute($route, $path)) {
+                return $handler;
+            }
+        }
+
+        return null;
+    }
+
+    private function matchRoute(string $route, string $path): bool
+    {
+        // 简单的路由匹配
+        $routePattern = preg_replace('/\{[^}]+\}/', '[^/]+', $route);
+        $routePattern = "#^{$routePattern}$#";
+
+        return preg_match($routePattern, $path) === 1;
+    }
+
+    private function executeHandler(array $handler, Request $request, Response $response): void
+    {
+        [$className, $methodName] = $handler;
+
+        if (class_exists($className) && method_exists($className, $methodName)) {
+            $controller = new $className();
+            $controller->$methodName($request, $response);
+        } else {
+            throw new \Exception("Handler {$className}::{$methodName} not found");
+        }
+    }
+}

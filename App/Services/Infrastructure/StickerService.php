@@ -1,0 +1,305 @@
+<?php
+
+namespace App\Services\Infrastructure;
+
+use App\Services\Repository\StickerRepository;
+use App\Config\Config;
+
+/**
+ * 自定义表情服务 —— MySQL 持久化 + 图床代理上传
+ *
+ * 架构：
+ *   - MySQL 直接读写（连接池保证并发安全）
+ *   - 用户上传通过 Swoole 代理调用图床 API
+ *   - 管理员添加默认表情仍然保留
+ */
+class StickerService
+{
+    /** 图片最大像素数（宽×高）：聊天图只显示 240px，超过这个量级没有意义且会拖垮图片处理 */
+    private const MAX_IMAGE_PIXELS = 30000000;
+
+    private static bool $started = false;
+
+    public static function start(): void
+    {
+        if (self::$started) return;
+        self::$started = true;
+
+        StickerRepository::ensureTable();
+
+        Logger::info('StickerService started (MySQL)');
+    }
+
+    // ==================== 默认表情（管理员操作） ====================
+
+    public static function add(string $name, string $url): array
+    {
+        $id = uniqid('st_', true);
+        StickerRepository::upsert($id, $name, $url);
+        StickerRepository::incrementVersion();
+
+        return ['id' => $id, 'name' => $name, 'url' => $url];
+    }
+
+    public static function delete(string $id): bool
+    {
+        StickerRepository::delete($id);
+        StickerRepository::incrementVersion();
+        return true;
+    }
+
+    public static function list(): array
+    {
+        return StickerRepository::all();
+    }
+
+    // ==================== 用户表情 ====================
+
+    public static function listForUser(string $userId): array
+    {
+        return StickerRepository::allForUser($userId);
+    }
+
+    public static function deleteForUser(string $userId, string $id): void
+    {
+        StickerRepository::deleteUserSticker($userId, $id);
+    }
+
+    /**
+     * 管理员上传默认表情：代理上传到图床 → 存入 stickers 表
+     */
+    public static function uploadDefault(string $name, string $imageData, string $fileExt = 'png'): array
+    {
+        $url = self::uploadToImageHosting(self::decodeBase64($imageData), $fileExt);
+
+        if (empty($url) || !preg_match('#^https?://.+#i', $url)) {
+            throw new \RuntimeException('图床上传失败，未获取到有效URL');
+        }
+
+        $id = uniqid('st_', true);
+        StickerRepository::upsert($id, $name, $url);
+        StickerRepository::incrementVersion();
+
+        Logger::info('StickerService: admin uploaded default sticker', ['id' => $id, 'name' => $name]);
+
+        return ['id' => $id, 'name' => $name, 'url' => $url];
+    }
+
+    /**
+     * 用户上传表情：代理上传到图床 → 存入 MySQL
+     *
+     * @param string $userId    用户ID
+     * @param string $name      表情名称
+     * @param string $imageData base64 图片数据（不含 data:xxx;base64, 前缀）或二进制
+     * @param string $fileExt   文件扩展名（如 png、jpg、gif）
+     * @return array ['id' => xx, 'name' => xx, 'url' => xx]
+     */
+    public static function uploadForUser(string $userId, string $name, string $imageData, string $fileExt = 'png'): array
+    {
+        $uploadUrl = Config::get('ImageHosting.UploadUrl', '');
+        if (empty($uploadUrl)) {
+            throw new \RuntimeException('图床未配置');
+        }
+
+        $url = self::uploadToImageHosting(self::decodeBase64($imageData), $fileExt, 'sticker_');
+
+        if (empty($url) || !preg_match('#^https?://.+#i', $url)) {
+            throw new \RuntimeException('图床上传失败，未获取到有效URL');
+        }
+
+        $id = uniqid('us_', true);
+        StickerRepository::addUserSticker($userId, $id, $name, $url);
+
+        Logger::info('StickerService: user uploaded sticker', ['user_id' => $userId, 'id' => $id, 'name' => $name]);
+
+        return ['id' => $id, 'name' => $name, 'url' => $url];
+    }
+
+    // ==================== 图床上传代理 ====================
+
+    /** base64 图片数据 → 二进制（严格模式解码，失败抛异常） */
+    private static function decodeBase64(string $imageData): string
+    {
+        $binary = base64_decode($imageData, true);
+        if ($binary === false) {
+            throw new \RuntimeException('图片数据 base64 解码失败');
+        }
+        return $binary;
+    }
+
+    /**
+     * 上传聊天图片到图床（不入库），返回图片 URL
+     * 复用表情上传的完整校验：格式白名单 / 2MB 限制 / 真实解码验证
+     *
+     * @param string $binaryData 图片二进制数据
+     * @param string $fileExt    文件扩展名（如 png、jpg、gif）
+     */
+    public static function uploadImage(string $binaryData, string $fileExt = 'png'): string
+    {
+        $uploadUrl = Config::get('ImageHosting.UploadUrl', '');
+        if (empty($uploadUrl)) {
+            throw new \RuntimeException('图床未配置');
+        }
+
+        $url = self::uploadToImageHosting($binaryData, $fileExt, 'chat_');
+
+        if (empty($url) || !preg_match('#^https?://.+#i', $url)) {
+            throw new \RuntimeException('图床上传失败，未获取到有效URL');
+        }
+
+        Logger::info('StickerService: chat image uploaded', ['url' => $url]);
+
+        return $url;
+    }
+
+    private static function uploadToImageHosting(string $binaryData, string $fileExt, string $namePrefix = ''): string
+    {
+        $uploadUrl = Config::get('ImageHosting.UploadUrl', '');
+        $backstage  = Config::get('ImageHosting.Backstage', '');
+        $appId      = Config::get('ImageHosting.AppId', '');
+        $key        = Config::get('ImageHosting.Key', '');
+        $successField = Config::get('ImageHosting.SuccessField', 'code');
+        $successValue = Config::get('ImageHosting.SuccessValue', 1);
+        $urlField     = Config::get('ImageHosting.UrlField', 'url');
+        $errorField   = Config::get('ImageHosting.ErrorField', 'msg');
+
+        $ext = strtolower(trim($fileExt));
+        // 仅允许标准图片格式，不在白名单内直接拒绝
+        $allowedExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+        if (!in_array($ext, $allowedExts, true)) {
+            throw new \RuntimeException('不支持的文件格式：' . $ext . '，仅允许 ' . implode(', ', $allowedExts));
+        }
+        if ($ext === 'jpg') {
+            $ext = 'jpeg';
+        }
+
+        // 文件大小校验：最大 2MB
+        $maxSize = 2 * 1024 * 1024;
+        if (strlen($binaryData) > $maxSize) {
+            throw new \RuntimeException('图片大小不能超过 2MB');
+        }
+
+        // 校验图片内容：只解析文件头拿格式与尺寸，不做全图解码。
+        // 不能用 imagecreatefromstring —— 它会把图片解成 宽×高×4 字节的位图，
+        // 一张 2MB 的图可解出上百 MB（如 8000×6000 → 192MB），在 memory_limit 较小的
+        // 环境下直接 OOM，而内存耗尽是 fatal error 无法被 catch，会打死 Swoole worker 导致 502。
+        // 这里上传给图床的本来就是原始字节（不做转码），所以也无需真正解码。
+        $info = @getimagesizefromstring($binaryData);
+        if ($info === false || empty($info[0]) || empty($info[1])) {
+            throw new \RuntimeException('文件不是有效的图片');
+        }
+        // 分辨率上限：PNG 纯色大图可以远小于 2MB，仍需拦掉，否则客户端渲染会卡死
+        if ((int)$info[0] * (int)$info[1] > self::MAX_IMAGE_PIXELS) {
+            throw new \RuntimeException('图片分辨率过大，请压缩后重试（最大 ' . (self::MAX_IMAGE_PIXELS / 10000) . ' 万像素）');
+        }
+
+        // 不转换格式，保留原始图片数据
+        $mimeMap = [
+            'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif',
+            'webp' => 'image/webp', 'bmp' => 'image/bmp',
+        ];
+        $mimeType = $mimeMap[$ext] ?? 'image/png';
+
+        $boundary = '----FormBoundary' . bin2hex(random_bytes(16));
+
+        $body = '';
+        $body .= "--{$boundary}\r\n";
+        $body .= "Content-Disposition: form-data; name=\"backstage\"\r\n\r\n{$backstage}\r\n";
+        $body .= "--{$boundary}\r\n";
+        $body .= "Content-Disposition: form-data; name=\"appid\"\r\n\r\n{$appId}\r\n";
+        $body .= "--{$boundary}\r\n";
+        $body .= "Content-Disposition: form-data; name=\"key\"\r\n\r\n{$key}\r\n";
+        $body .= "--{$boundary}\r\n";
+        $body .= "Content-Disposition: form-data; name=\"file\"; filename=\"" . uniqid($namePrefix, true) . ".{$fileExt}\"\r\n";
+        $body .= "Content-Type: {$mimeType}\r\n\r\n";
+        $body .= $binaryData;
+        $body .= "\r\n--{$boundary}--\r\n";
+
+        $parsedUrl = parse_url($uploadUrl);
+        $host = $parsedUrl['host'] ?? '';
+        $port = $parsedUrl['port'] ?? ($parsedUrl['scheme'] === 'https' ? 443 : 80);
+        $path = ($parsedUrl['path'] ?? '/') . (isset($parsedUrl['query']) ? '?' . $parsedUrl['query'] : '');
+        $isHttps = ($parsedUrl['scheme'] ?? 'https') === 'https';
+
+        $client = new \Swoole\Coroutine\Http\Client($host, $port, $isHttps);
+        $client->set([
+            'timeout' => 30,
+            'ssl_verify_peer' => false,
+            'ssl_verify_host' => false,
+        ]);
+        $client->setHeaders([
+            'Content-Type' => 'multipart/form-data; boundary=' . $boundary,
+        ]);
+        $client->post($path, $body);
+        $statusCode = $client->statusCode;
+        $responseBody = $client->body;
+        $client->close();
+
+        if ($statusCode !== 200) {
+            Logger::error('StickerService: image hosting upload failed', [
+                'status' => $statusCode,
+                'response' => substr($responseBody, 0, 500),
+            ]);
+            throw new \RuntimeException("图床上传失败，HTTP {$statusCode}");
+        }
+
+        $response = json_decode($responseBody, true);
+        if (!$response) {
+            throw new \RuntimeException('图床返回数据解析失败');
+        }
+
+        // 解析嵌套字段（如 data.url）
+        $successValueActual = self::getNestedValue($response, $successField);
+        if ($successValueActual != $successValue) {
+            $errorMsg = self::getNestedValue($response, $errorField) ?? '未知错误';
+            Logger::error('StickerService: image hosting returned error', [
+                'success_field' => $successField,
+                'expected' => $successValue,
+                'actual' => $successValueActual,
+                'error' => $errorMsg,
+            ]);
+            throw new \RuntimeException("图床上传失败: {$errorMsg}");
+        }
+
+        $imageUrl = self::getNestedValue($response, $urlField);
+        if (empty($imageUrl)) {
+            throw new \RuntimeException('图床未返回图片URL');
+        }
+
+        return (string)$imageUrl;
+    }
+
+    /**
+     * 确保图像为真彩色（GIF 等调色板图像转换后透明通道才能正常工作）
+     */
+    private static function ensureTrueColor(\GdImage $img): \GdImage
+    {
+        if (imageistruecolor($img)) {
+            return $img;
+        }
+        $w = imagesx($img);
+        $h = imagesy($img);
+        $tc = imagecreatetruecolor($w, $h);
+        imagealphablending($tc, false);
+        imagesavealpha($tc, true);
+        imagecopy($tc, $img, 0, 0, 0, 0, $w, $h);
+        unset($img);
+        return $tc;
+    }
+
+    /**
+     * 从数组中获取嵌套字段值（支持点号分隔，如 data.url）
+     */
+    private static function getNestedValue(array $data, string $field): mixed
+    {
+        $keys = explode('.', $field);
+        $current = $data;
+        foreach ($keys as $key) {
+            if (!is_array($current) || !array_key_exists($key, $current)) {
+                return null;
+            }
+            $current = $current[$key];
+        }
+        return $current;
+    }
+}

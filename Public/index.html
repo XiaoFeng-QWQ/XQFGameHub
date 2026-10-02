@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>XQFGameHub 游戏中心</title>
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="description" content="XQFGameHub 游戏中心——图灵测试、海龟汤、五子棋、公共聊天室、临时聊天，一台机器里好多场对局。">
+    <meta property="og:title" content="XQFGameHub 游戏中心">
+    <meta property="og:description" content="图灵测试 · 海龟汤 · 五子棋 · 公共聊天室 · 临时聊天">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/favicon.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="preconnect" href="https://s4.zstatic.net" crossorigin>
+    <link rel="stylesheet" href="/style.css?v=">
+    <link rel="stylesheet" href="/hub.css?v=">
+</head>
+
+<body>
+
+    <div id="announcement-area"></div>
+
+    <div class="hub-notice" role="status">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+                d="M3 11h2.586a1 1 0 0 1 .707.293l7.414 7.414A.5.5 0 0 0 14.5 18.35V5.65a.5.5 0 0 0-.793-.357L6.293 12.707a1 1 0 0 1-.707.293H3a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1z" />
+            <path d="M16 9.5a4.5 4.5 0 0 1 0 5" />
+            <path d="M19 7a8 8 0 0 1 0 10" />
+        </svg>
+        <b>NOTICE</b>
+        <span>本站已从「图灵测试」升级为 XQFGameHub 游戏中心：原 1v1 入口保留在 /turing，其余玩法也已归位。</span>
+    </div>
+
+    <header class="hub-header">
+        <a href="/" class="logo-text" title="XQFGameHub 游戏中心">
+            <svg class="icon" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            XQFGameHub
+        </a>
+
+        <div class="header-actions">
+            <a class="hub-nav-account" href="/account" title="我的账号">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M5 20v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" />
+                </svg>
+                <span>我的账号</span>
+            </a>
+            <button class="doodle-btn hub-theme-btn" id="btn-theme" title="主题切换">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5" />
+                    <path d="M12 1v2" />
+                    <path d="M12 21v2" />
+                    <path d="M4.22 4.22l1.42 1.42" />
+                    <path d="M18.36 18.36l1.42 1.42" />
+                    <path d="M1 12h2" />
+                    <path d="M21 12h2" />
+                    <path d="M4.22 19.78l1.42-1.42" />
+                    <path d="M18.36 5.64l1.42-1.42" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section id="hub-page">
+
+            <!-- ============ ① 街机牌面（Hero） ============ -->
+            <div class="hub-hero-stage">
+                <span class="hub-hero-sheet hub-hand" aria-hidden="true"></span>
+
+                <div class="hub-hero-marquee" aria-hidden="true">
+                    <span class="hub-live-dot"></span>
+                    <b>NOW PLAYING</b><i></i>
+                    <span>图灵测试</span><i></i>
+                    <span>海龟汤</span><i></i>
+                    <span>五子棋</span><i></i>
+                    <span>聊天室</span><i></i>
+                    <span>临时聊天</span><i></i>
+                    <span>营业中</span>
+                </div>
+
+                <div class="hub-hero-card hub-hand">
+                    <span class="hub-tape hub-tape--tl" aria-hidden="true"></span>
+                    <span class="hub-tape hub-tape--br" aria-hidden="true"></span>
+
+                    <div class="hub-hero-copy">
+                        <p class="hub-hero-eyebrow"># GAME HUB</p>
+                        <h1 class="hub-hero-title">
+                            <span class="hub-hero-en">XQFGameHub</span>
+                            <span class="hub-hero-cn">XQF游戏中心</span>
+                        </h1>
+                        <p class="hub-hero-sub">屏幕那边，不止一场对局。</p>
+                        <p class="hub-hero-modes">匿名匹配 · 问答推理 · 在线对弈 · 大厅闲聊</p>
+
+                        <div class="hub-hero-stats">
+                            <span class="hub-stat" id="hub-online-stat">
+                                <svg class="hub-stat-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="8" r="4" />
+                                    <path d="M5 20v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" />
+                                </svg>
+                                <b id="hub-online-num">--</b>
+                                <span class="hub-stat-label">名玩家在线</span>
+                            </span>
+                            <span class="hub-stat">
+                                <svg class="hub-stat-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                                </svg>
+                                <b>5</b>
+                                <span class="hub-stat-label">个玩法</span>
+                            </span>
+                            <span class="hub-stat">
+                                <svg class="hub-stat-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 17l5-6 4 3 6-8" />
+                                    <path d="M3 3v18h18" />
+                                </svg>
+                                <b id="hub-week-games">--</b>
+                                <span class="hub-stat-label">本周对局</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="hub-hero-art" aria-hidden="true">
+                        <svg viewBox="0 0 240 210">
+                            <!-- 显示器 -->
+                            <rect class="hub-screen-frame" x="52" y="10" width="136" height="102" rx="6" />
+                            <rect class="hub-screen" x="60" y="18" width="120" height="86" />
+                            <text x="66" y="36" font-size="12" font-family="Menlo,Consolas,monospace">HUMAN?</text>
+                            <text x="66" y="54" font-size="12" font-family="Menlo,Consolas,monospace">……</text>
+                            <text x="140" y="84" font-size="12" font-family="Menlo,Consolas,monospace">AI?</text>
+                            <!-- 支架 -->
+                            <path d="M120 112v14" />
+                            <path d="M98 126h44" />
+                            <!-- 手柄线 -->
+                            <path d="M120 126c8 12 0 18 10 26" />
+                            <!-- 手柄 -->
+                            <rect class="hub-pad" x="62" y="152" width="116" height="44" rx="20" />
+                            <circle class="hub-dpad" cx="86" cy="174" r="8" />
+                            <path class="hub-dpad-cross" d="M86 165v18M77 174h18" />
+                            <circle class="hub-btn hub-btn--a" cx="146" cy="172" r="5" />
+                            <circle class="hub-btn hub-btn--b" cx="160" cy="172" r="5" />
+                            <path d="M128 172h2" />
+                        </svg>
+                        <span class="hub-hero-art-tag hub-hero-art-tag--human">HUMAN?</span>
+                        <span class="hub-hero-art-tag hub-hero-art-tag--ai">AI?</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ ② 主推 + 玩法：桌面横向分栏 ============ -->
+            <div class="hub-main-split">
+
+                <div class="hub-split-lead">
+                    <div class="hub-section-head">
+                        <span class="hub-section-title">主推位</span>
+                        <span class="hub-section-note">1v1 推理 · 新手友好</span>
+                    </div>
+
+                    <a href="/turing" class="hub-box hub-hand">
+                        <span class="hub-tape hub-tape--top" aria-hidden="true"></span>
+                        <span class="hub-box-spine">图灵测试 · 1v1</span>
+                        <span class="hub-box-cover">
+                            <video class="hub-box-video" src="https://t.alcy.cc/acg" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>
+                            <img class="hub-box-cover-img" src="https://t.alcy.cc/lai" alt="" aria-hidden="true" loading="eager">
+                        </span>
+                        <span class="hub-box-body">
+                            <span class="hub-stamp hub-stamp--danger">主推</span>
+                            <span class="hub-box-title">图灵测试（1v1）</span>
+                            <span class="hub-box-desc">匿名连线 · 试探识破 · 判定人类或 AI · 对局后可测默契</span>
+                            <span class="hub-box-meta">
+                                <span>5 / 10 分钟</span>
+                                <span>真人优先</span>
+                                <span>战绩存档</span>
+                            </span>
+                        </span>
+                        <span class="hub-box-cta">
+                            开始匹配
+                            <svg class="icon" viewBox="0 0 24 24">
+                                <path d="M5 12h14" />
+                                <path d="M13 6l6 6-6 6" />
+                            </svg>
+                        </span>
+                    </a>
+                </div>
+
+                <div class="hub-split-side">
+                    <div class="hub-section-head">
+                        <span class="hub-section-title">玩法</span>
+                        <span class="hub-section-note">挑一盘坐下</span>
+                    </div>
+
+                    <div class="hub-filters" role="tablist" aria-label="玩法分类">
+                        <button type="button" class="hub-filter is-active" data-group="all">全部</button>
+                        <button type="button" class="hub-filter" data-group="reason">推理对局</button>
+                        <button type="button" class="hub-filter" data-group="board">棋盘竞技</button>
+                        <button type="button" class="hub-filter" data-group="chat">聊天社交</button>
+                    </div>
+
+                    <div class="hub-grid">
+                        <a href="/soup" class="hub-card hub-card--blue hub-hand" data-group="reason">
+                            <span class="hub-card-cover">
+                                <span class="hub-card-window">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <path d="M3 12h18a9 9 0 0 1-9 9 9 9 0 0 1-9-9z" />
+                                        <path d="M8 8c0-1.5 1-2 1-3.5" />
+                                        <path d="M12 8c0-1.5 1-2 1-3.5" />
+                                        <path d="M16 8c0-1.5 1-2 1-3.5" />
+                                    </svg>
+                                </span>
+                            </span>
+                            <span class="hub-stamp hub-stamp--danger hub-card-stamp">NEW</span>
+                            <span class="hub-card-body">
+                                <span class="hub-card-title">海龟汤</span>
+                                <span class="hub-card-desc">横向思维 · 问答推理</span>
+                                <span class="hub-card-meta">
+                                    <span>问答推理</span>
+                                    <span>共享汤面</span>
+                                </span>
+                            </span>
+                        </a>
+
+                        <a href="/lobby" class="hub-card hub-card--yellow hub-hand" data-group="chat">
+                            <span class="hub-card-cover">
+                                <span class="hub-card-window">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                </span>
+                            </span>
+                            <span class="hub-stamp hub-stamp--ink hub-card-stamp">HOT</span>
+                            <span class="hub-card-body">
+                                <span class="hub-card-title">公共聊天室</span>
+                                <span class="hub-card-desc">实时聊天 · 全服公告</span>
+                                <span class="hub-card-meta">
+                                    <span>全服大厅</span>
+                                    <span>点歌 / 贴纸</span>
+                                </span>
+                            </span>
+                        </a>
+
+                        <a href="/gomoku" class="hub-card hub-card--green hub-hand" data-group="board">
+                            <span class="hub-card-cover">
+                                <span class="hub-card-window">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <circle cx="7" cy="7" r="5" fill="currentColor" />
+                                        <circle cx="17" cy="7" r="5" />
+                                        <circle cx="12" cy="17" r="5" />
+                                        <line x1="2" y1="22" x2="9" y2="15" />
+                                    </svg>
+                                </span>
+                            </span>
+                            <span class="hub-card-body">
+                                <span class="hub-card-title">五子棋</span>
+                                <span class="hub-card-desc">单机 AI · 在线对弈</span>
+                                <span class="hub-card-meta">
+                                    <span>单机 / 联机</span>
+                                    <span>可观战</span>
+                                </span>
+                            </span>
+                        </a>
+
+                        <a href="/temp-chat" class="hub-card hub-card--pink hub-hand" data-group="chat">
+                            <span class="hub-card-cover">
+                                <span class="hub-card-window">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                    </svg>
+                                </span>
+                            </span>
+                            <span class="hub-card-body">
+                                <span class="hub-card-title">临时聊天</span>
+                                <span class="hub-card-desc">私密 · 隐秘空间</span>
+                                <span class="hub-card-meta">
+                                    <span>私密房间</span>
+                                    <span>邀请进入</span>
+                                </span>
+                            </span>
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ============ ④ 服务票根条 ============ -->
+            <div class="hub-section-head">
+                <span class="hub-section-title">服务</span>
+                <span class="hub-section-note">顺手拿一张票</span>
+            </div>
+
+            <div class="hub-ticket-strip">
+                <a href="/weekly-report" class="hub-ticket">
+                    <b>01</b>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    <span>全服周报</span>
+                    <em>榜单</em>
+                </a>
+
+                <a href="http://share.xfcode.top" target="_blank" rel="noopener" class="hub-ticket">
+                    <b>02</b>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        <path d="M9 10h6" />
+                    </svg>
+                    <span>MDv3 分享站</span>
+                    <em>外链</em>
+                </a>
+
+                <button type="button" class="hub-ticket" id="btn-comment-widget">
+                    <b>03</b>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        <path d="M8 9h8" />
+                        <path d="M8 13h5" />
+                    </svg>
+                    <span>评价与打分</span>
+                    <em>表态</em>
+                </button>
+            </div>
+
+        </section>
+    </main>
+
+    <div class="hub-footer">
+        <a href="https://fakeicp.top" target="_blank" title="点击查看 假ICP备 访问量统计">
+            <img src="https://fakeicp.top/api/analytics/badge?site=https://game.xfcode.top/"
+                alt="访问量统计 | fakeicp.top" />
+        </a>
+        <a href="http://wapmz.com/in/292"><img src="http://wapmz.com/cn/big/292" alt="wapmz.com"></a><br>
+        <a href="https://icp.gov.moe/?keyword=20269944" target="_blank">萌ICP备20269944号</a>
+        <a href="https://fakeicp.top/query.html?number=1202612" target="_blank">假ICP备1202612号</a>
+        <br>
+        本项目基于 AGPL 协议开源，欢迎部署或学习：<a href="https://github.com/XiaoFeng-QWQ/TuringTalk" target="_blank" rel="noopener"
+            style="text-decoration:underline;">github.com/XiaoFeng-QWQ/TuringTalk</a>
+    </div>
+
+    <script src="/shared.js?v="></script>
+    <script src="/comment-widget.js?v="></script>
+    <script src="/hub.js?v="></script>
+</body>
+
+</html>

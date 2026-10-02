@@ -1,0 +1,1413 @@
+/* ============================================================
+   XQFGameHub 游戏中心 —— 全局导航 + 首页样式
+   ------------------------------------------------------------
+   约定：
+   1. 本文件禁止出现十六进制色值，一律取 style.css 的 CSS 变量，
+      保证暗色主题（[data-theme="dark"]）自动生效。
+   2. 不覆盖玩法页各自动作的 .header-actions 按钮，只做头部统一微调。
+   3. 手绘语言与主站一致：不规则圆角、2px 描边、错位实心阴影。
+   ============================================================ */
+
+/* ---------- 通用：手绘不规则圆角（与 gomoku/soup 一致） ---------- */
+.hub-hand {
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+}
+
+/* ============================================================
+   一、全局「玩法」按钮
+   按钮被插入各页 header 的 .header-actions 内，与主题等按钮同排；
+   点击打开下面的玩法切换弹窗（桌面端与移动端一致）。
+   ============================================================ */
+
+.hub-nav {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* ---------- 居中组（可选布局）----------
+   把「页面标题 + 玩法按钮」包成一组整体居中，最左留给返回按钮：
+     header: [左占位] [返回] … [居中组: logo + header-actions] … [右占位]
+   两侧 .hub-nav-spacer 等宽(flex:1)，居中组因此精确居中；
+   又因为仍是 flex 子项（非绝对定位），窄屏不会与右侧按钮重叠。 */
+.hub-nav-center {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+.hub-nav-spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.hub-nav-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 5px 11px;
+    text-decoration: none;
+    color: var(--ink-black);
+    border: 2px solid var(--ink-black);
+    background: var(--surface-white);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.hub-nav-chip:hover {
+    transform: translateY(-1px);
+    background: var(--note-blue);
+}
+
+.hub-nav-chip .icon {
+    width: 1em;
+    height: 1em;
+}
+
+/* 当前页：反白强调，并禁止跳转视觉反馈 */
+.hub-nav-chip.is-active {
+    background: var(--ink-black);
+    color: var(--surface-white);
+    border-color: var(--ink-black);
+    box-shadow: 2px 2px 0 var(--shadow-md);
+    cursor: default;
+}
+
+[data-theme="dark"] .hub-nav-chip.is-active {
+    background: var(--ink-blue);
+    color: #fff;
+    border-color: var(--ink-blue);
+}
+
+.hub-nav-chip-badge {
+    font-size: 9px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: var(--danger);
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+/* 账号入口（与 chips 同语言，但视觉上区分于玩法） */
+.hub-nav-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 5px 11px;
+    text-decoration: none;
+    color: var(--ink-black);
+    border: 2px solid var(--ink-black);
+    background: var(--note-pink);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    transition: transform 0.15s ease;
+}
+
+.hub-nav-account:hover {
+    transform: translateY(-1px);
+}
+
+.hub-nav-account.is-active {
+    background: var(--ink-black);
+    color: var(--surface-white);
+    cursor: default;
+}
+
+[data-theme="dark"] .hub-nav-account.is-active {
+    background: var(--ink-blue);
+    color: #fff;
+    border-color: var(--ink-blue);
+}
+
+.hub-nav-account .icon {
+    width: 1em;
+    height: 1em;
+}
+
+/* 移动端「玩法」按钮，桌面端隐藏 */
+.hub-nav-burger {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--ink-black);
+    border: 2px solid var(--ink-black);
+    background: var(--note-yellow);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+}
+
+/* ============================================================
+   二、通用弹窗
+   完全对齐主站弹窗配方（.lobby-users / .lobby-song-panel / .lobby-report-card）：
+     圆角 20px 6px 20px 6px / 6px 20px 6px 20px
+     阴影 6px 8px 0 var(--shadow-md)
+     底色 var(--note-pink)
+     动画直接复用 style.css 的 popIn / fadeScaleOut，不自造 keyframes
+   用法：<div class="hub-modal"> <div class="hub-modal-card">…</div> </div>
+   ============================================================ */
+
+.hub-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(0, 0, 0, 0.45);
+    animation: fadeIn 0.12s ease-out;
+}
+
+.hub-modal.is-open {
+    display: flex;
+}
+
+.hub-modal-card {
+    width: min(460px, 100%);
+    max-height: min(84vh, 660px);
+    overflow-y: auto;
+    padding: 16px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    background: var(--note-pink);
+    border: 2px solid var(--ink-black);
+    border-radius: 20px 6px 20px 6px / 6px 20px 6px 20px;
+    box-shadow: 6px 8px 0 var(--shadow-md);
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 关闭动画（JS 加 .closing 后延时隐藏） */
+.hub-modal.closing {
+    animation: fadeOut 0.1s ease-in forwards;
+}
+
+.hub-modal.closing .hub-modal-card {
+    animation: fadeScaleOut 0.1s ease-in forwards;
+}
+
+/* 弹窗标题：与站点弹窗一致的 <h3> 观感 */
+.hub-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 2px dashed var(--border-light);
+}
+
+.hub-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--ink-blue);
+    letter-spacing: 0.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .hub-modal,
+    .hub-modal-card,
+    .hub-modal.closing,
+    .hub-modal.closing .hub-modal-card {
+        animation: none;
+    }
+}
+
+/* ---------- 玩法切换弹窗内部（基于 .hub-modal） ---------- */
+
+.hub-nav-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.hub-nav-modal-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 10px;
+    font-size: 13px;
+    text-decoration: none;
+    color: var(--ink-black);
+    border: 2px solid var(--ink-black);
+    background: var(--note-blue);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+}
+
+.hub-nav-modal-item .icon {
+    width: 1.15em;
+    height: 1.15em;
+}
+
+.hub-nav-modal-item.is-active {
+    background: var(--ink-black);
+    color: var(--surface-white);
+}
+
+[data-theme="dark"] .hub-nav-modal-item.is-active {
+    background: var(--ink-blue);
+    color: #fff;
+}
+
+.hub-nav-modal-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   四、首页（游戏中心）布局
+   ------------------------------------------------------------
+   语言：街机牌面 × 游戏盒 × 卡带架 × 票根条。
+   每块是不同的"物件"而非统一卡片墙；排版用大字重、左对齐、
+   错落与留白制造层次。全部取主站变量；禁止 emoji / 渐变 / 玻璃拟态。
+   ============================================================ */
+
+#hub-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 34px;
+    width: 100%;
+    max-width: 960px;
+}
+
+/* ---------- 首页头部微调 ---------- */
+.hub-header {
+    background: var(--surface-header);
+}
+
+.hub-header .logo-text {
+    font-size: 20px;
+    text-decoration: none;
+}
+
+.hub-theme-btn {
+    padding: 8px 8px;
+}
+
+/* ---------- 顶部转型通知（固定悬浮，视口顶部居中） ---------- */
+.hub-notice {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-0.4deg);
+    z-index: 9990;
+    width: min(960px, calc(100vw - 24px));
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-black);
+    background: var(--note-yellow);
+    border: 2px solid var(--ink-black);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    box-shadow: 2px 3px 0 var(--shadow-md);
+}
+
+.hub-notice .icon {
+    flex-shrink: 0;
+    width: 1.2em;
+    height: 1.2em;
+    color: var(--ink-blue);
+}
+
+.hub-notice b {
+    flex-shrink: 0;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--surface-white);
+    background: var(--ink-black);
+    padding: 2px 7px;
+    border-radius: 3px;
+}
+
+.hub-notice span {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+}
+
+/* ---------- 胶带（washi tape） ---------- */
+.hub-tape {
+    position: absolute;
+    z-index: 3;
+    width: 92px;
+    height: 24px;
+    background: var(--surface-header);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 1px 2px var(--shadow-sm);
+    pointer-events: none;
+}
+
+.hub-tape--tl {
+    top: -13px;
+    left: 30px;
+    transform: rotate(-7deg);
+}
+
+.hub-tape--br {
+    bottom: -13px;
+    right: 34px;
+    transform: rotate(5deg);
+}
+
+.hub-tape--top {
+    top: -13px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-1.5deg);
+    width: 130px;
+}
+
+/* ============================================================
+   Hero：街机招牌 + 扉页
+   结构：招牌条（marquee）→ 横格纸大卡（左文案 / 右游戏机手绘）
+   ============================================================ */
+
+.hub-hero-stage {
+    position: relative;
+    width: 100%;
+    isolation: isolate;
+}
+
+/* 衬底纸（压在招牌与大卡后面） */
+.hub-hero-sheet {
+    position: absolute;
+    inset: 40px 16px -18px 20px;
+    display: block;
+    background: var(--note-blue);
+    border: 2px solid var(--ink-black);
+    box-shadow: 3px 5px 8px var(--shadow-sm);
+    transform: rotate(1.4deg);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* 街机招牌条：NOW PLAYING 走马灯 */
+.hub-hero-marquee {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 9px 16px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    box-shadow: 3px 3px 0 var(--shadow-md);
+    transform: rotate(-0.6deg);
+}
+
+.hub-hero-marquee b {
+    color: var(--ink-blue);
+    font-weight: bold;
+    letter-spacing: 3px;
+}
+
+.hub-hero-marquee i {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--dot-color);
+    flex-shrink: 0;
+}
+
+/* 大卡：横格纸底（笔记本横线） */
+.hub-hero-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin-top: 18px;
+    display: flex;
+    align-items: stretch;
+    gap: 30px;
+    padding: 34px 38px 28px;
+    background-color: var(--note-yellow);
+    background-image: repeating-linear-gradient(0deg, var(--border-lighter) 0 1px, transparent 1px 26px);
+    border: 2px solid var(--ink-black);
+    transform: rotate(-0.7deg);
+    box-shadow: 4px 6px 0 var(--shadow-md);
+    text-align: left;
+}
+
+.hub-hero-copy {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.hub-hero-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: var(--ink-blue);
+    margin-bottom: 12px;
+}
+
+.hub-live-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 2px var(--surface-white);
+    animation: hub-pulse 2.2s ease-in-out infinite;
+}
+
+.hub-hero-title {
+    margin-bottom: 12px;
+}
+
+/* 品牌大字：荧光笔标线 + 大字重 */
+.hub-hero-en {
+    display: block;
+    font-size: 54px;
+    line-height: 1.05;
+    letter-spacing: 1px;
+    font-weight: bold;
+    background-image: linear-gradient(180deg, transparent 64%, var(--highlighter) 64%);
+}
+
+.hub-hero-cn {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: normal;
+    letter-spacing: 5px;
+    color: var(--ink-blue);
+    border: 2px solid var(--ink-black);
+    background: var(--surface-white);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    padding: 5px 14px;
+    transform: rotate(1deg);
+    box-shadow: 2px 2px 0 var(--shadow-md);
+}
+
+.hub-hero-sub {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.hub-hero-modes {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+/* 状态票根：一整条撕口连票（不是三块悬浮卡） */
+.hub-hero-stats {
+    display: flex;
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 2px dashed var(--border-light);
+}
+
+.hub-stat {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--text-subtle);
+    border-right: 2px dashed var(--border-light);
+}
+
+.hub-stat:last-child {
+    border-right: none;
+}
+
+.hub-stat-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ink-blue);
+    flex-shrink: 0;
+}
+
+.hub-stat b {
+    font-size: 20px;
+    line-height: 1;
+    color: var(--ink-blue);
+}
+
+.hub-stat.is-offline b {
+    color: var(--text-subtle);
+}
+
+@keyframes hub-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.45;
+        transform: scale(0.82);
+    }
+}
+
+/* 右侧：手绘游戏机（图灵主题） */
+.hub-hero-art {
+    position: relative;
+    flex-shrink: 0;
+    width: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 14px 16px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 18px 5px 18px 5px / 5px 18px 5px 18px;
+    box-shadow: 3px 3px 0 var(--shadow-md);
+    transform: rotate(1.6deg);
+}
+
+.hub-hero-art svg {
+    width: 100%;
+    height: auto;
+    color: var(--ink-black);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* 游戏机局部上色：屏幕便签蓝、机身纸白、按钮便签粉/绿 */
+.hub-hero-art .hub-screen-frame {
+    fill: var(--surface-white);
+}
+
+.hub-hero-art .hub-screen {
+    fill: var(--note-blue);
+}
+
+.hub-hero-art .hub-pad {
+    fill: var(--surface-white);
+}
+
+.hub-hero-art .hub-dpad {
+    fill: var(--surface-white);
+}
+
+.hub-hero-art .hub-btn--a {
+    fill: var(--note-pink);
+}
+
+.hub-hero-art .hub-btn--b {
+    fill: var(--note-green);
+}
+
+.hub-hero-art text {
+    fill: var(--ink-blue);
+    stroke: none;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.hub-hero-art-tag {
+    position: absolute;
+    padding: 3px 9px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--ink-black);
+    background: var(--note-green);
+    border: 2px solid var(--ink-black);
+    border-radius: 12px 3px 12px 3px / 3px 12px 3px 12px;
+    box-shadow: 2px 2px 0 var(--shadow-md);
+    white-space: nowrap;
+}
+
+.hub-hero-art-tag--human {
+    top: -12px;
+    left: 10px;
+    transform: rotate(-5deg);
+}
+
+.hub-hero-art-tag--ai {
+    bottom: -12px;
+    right: 10px;
+    background: var(--note-pink);
+    transform: rotate(4deg);
+}
+
+/* ============================================================
+   区块标题：大编号 + 手写附注
+   ============================================================ */
+
+.hub-section-head {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 2px dashed var(--border-light);
+}
+
+.hub-section-title {
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    color: var(--ink-black);
+}
+
+.hub-section-no {
+    display: inline-block;
+    margin-right: 12px;
+    font-size: 30px;
+    line-height: 1;
+    font-weight: bold;
+    color: var(--ink-blue);
+    letter-spacing: 1px;
+    vertical-align: -4px;
+}
+
+.hub-section-note {
+    font-size: 11px;
+    color: var(--text-subtle);
+    letter-spacing: 1px;
+    font-style: italic;
+}
+
+/* ============================================================
+   主推游戏盒：书脊 + 封面带 + 正文 + 开口按钮
+   ============================================================ */
+
+.hub-box {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+    text-decoration: none;
+    color: inherit;
+    background: var(--note-green);
+    border: 2px solid var(--ink-black);
+    box-shadow: 4px 6px 0 var(--shadow-sm);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hub-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 6px 9px 0 var(--shadow-md);
+}
+
+/* 书脊：竖排字，墨底 */
+.hub-box-spine {
+    flex-shrink: 0;
+    writing-mode: vertical-rl;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 7px;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--surface-white);
+    background: var(--ink-black);
+}
+
+/* 封面带：点阵纸 + 封面媒体 */
+.hub-box-cover {
+    position: relative;
+    flex-shrink: 0;
+    width: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: var(--surface-white);
+    background-image: radial-gradient(var(--dot-color) 1.2px, transparent 1.2px);
+    background-size: 16px 16px;
+    border-right: 2px dashed var(--border-light);
+}
+
+.hub-box-cover .hub-box-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+}
+
+.hub-box-cover .hub-box-cover-img {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+.hub-box-cover .icon {
+    width: 58px;
+    height: 58px;
+    color: var(--ink-blue);
+    transition: transform 0.2s ease;
+}
+
+.hub-box:hover .hub-box-cover .icon {
+    transform: rotate(-8deg) scale(1.1);
+}
+
+.hub-box-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 24px 28px;
+    text-align: left;
+    position: relative;
+}
+
+.hub-box-body .hub-stamp {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+}
+
+.hub-box-title {
+    display: block;
+    font-size: 26px;
+    font-weight: bold;
+    margin: 8px 0 6px;
+}
+
+.hub-box-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.hub-box-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 14px;
+}
+
+.hub-box-meta span {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--text-subtle);
+    padding: 3px 10px;
+    border: 1.5px dashed var(--border-light);
+    border-radius: 10px 3px 10px 3px / 3px 10px 3px 10px;
+    background: var(--surface-white);
+}
+
+.hub-box-cta {
+    align-self: center;
+    flex-shrink: 0;
+    margin-right: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 12px 20px;
+    border: 2px solid var(--ink-black);
+    background: var(--surface-white);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    box-shadow: 3px 3px 0 var(--shadow-md);
+    transform: rotate(-1deg);
+    white-space: nowrap;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.hub-box:hover .hub-box-cta {
+    background: var(--highlighter);
+    transform: rotate(-2deg) scale(1.05);
+}
+
+/* ============================================================
+   印章（rubber stamp）
+   ============================================================ */
+
+.hub-stamp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    border: 2px solid var(--ink-black);
+    color: var(--ink-black);
+    background: transparent;
+    border-radius: 4px;
+    transform: rotate(-6deg);
+    animation: hubStampIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.hub-stamp--danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.hub-stamp--ink {
+    background: var(--ink-black);
+    color: var(--surface-white);
+}
+
+@keyframes hubStampIn {
+    0% {
+        opacity: 0;
+        transform: scale(1.7) rotate(-14deg);
+    }
+
+    60% {
+        opacity: 1;
+        transform: scale(0.92) rotate(-4deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(-6deg);
+    }
+}
+
+/* ============================================================
+   分类筛选
+   ============================================================ */
+
+.hub-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+}
+
+.hub-filter {
+    position: relative;
+    font-size: 12px;
+    padding: 6px 14px;
+    cursor: pointer;
+    color: var(--ink-black);
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.hub-filter:hover {
+    transform: translateY(-1px);
+}
+
+.hub-filter:active {
+    transform: translateY(0) scale(0.94);
+}
+
+.hub-filter.is-active {
+    background: var(--note-yellow);
+    box-shadow: 2px 2px 0 var(--shadow-md);
+    animation: filterPick 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes filterPick {
+    0% {
+        transform: translateY(2px) scale(0.92);
+    }
+
+    70% {
+        transform: translateY(-2px) scale(1.06);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ============================================================
+   玩法卡带架：磁带形态（卷轮窗口 + 标签 + 角标）
+   ============================================================ */
+
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+.hub-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    text-align: center;
+    align-items: center;
+    border: 2px solid var(--ink-black);
+    background: var(--surface-white);
+    box-shadow: 2px 4px 0 var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hub-card:not([hidden]) {
+    animation: cardShown 0.28s cubic-bezier(0.22, 0.8, 0.24, 1) both;
+}
+
+.hub-card[hidden] {
+    display: none;
+}
+
+.hub-card:hover {
+    transform: translateY(-3px) rotate(-0.6deg);
+    box-shadow: 4px 7px 0 var(--shadow-md);
+}
+
+@keyframes cardShown {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 磁带窗口：便签色底 + 点阵纸 + 白底小窗，内放各玩法图标 */
+.hub-card-cover {
+    position: relative;
+    height: 88px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 2px dashed var(--border-light);
+    background-image: radial-gradient(var(--dot-color) 1.2px, transparent 1.2px);
+    background-size: 16px 16px;
+}
+
+.hub-card--blue .hub-card-cover {
+    background-color: var(--note-blue);
+}
+
+.hub-card--green .hub-card-cover {
+    background-color: var(--note-green);
+}
+
+.hub-card--yellow .hub-card-cover {
+    background-color: var(--note-yellow);
+}
+
+.hub-card--pink .hub-card-cover {
+    background-color: var(--note-pink);
+}
+
+.hub-card-window {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 48px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 12px 3px 12px 3px / 3px 12px 3px 12px;
+    box-shadow: 2px 2px 0 var(--shadow-md);
+    transition: transform 0.3s ease;
+}
+
+.hub-card-window .icon {
+    width: 30px;
+    height: 30px;
+    color: var(--ink-blue);
+    transition: transform 0.3s ease;
+}
+
+.hub-card:hover .hub-card-window {
+    transform: rotate(-4deg) scale(1.05);
+}
+
+.hub-card:hover .hub-card-window .icon {
+    transform: rotate(-8deg) scale(1.15);
+}
+
+/* 卡带角标：主推 / HOT 印章 */
+.hub-card-stamp {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 2;
+}
+
+/* 磁带标签 */
+.hub-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px 16px;
+    align-items: center;
+}
+
+.hub-card-title {
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.hub-card-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.hub-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.hub-card-meta span {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--text-subtle);
+    padding: 2px 8px;
+    border: 1.5px dashed var(--border-light);
+    border-radius: 10px 3px 10px 3px / 3px 10px 3px 10px;
+}
+
+/* ============================================================
+   服务票根条：一条撕口连票
+   ============================================================ */
+
+.hub-ticket-strip {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    box-shadow: 2px 4px 0 var(--shadow-sm);
+}
+
+.hub-ticket {
+    flex: 1 1 200px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+    text-decoration: none;
+    color: var(--ink-black);
+    background: var(--surface-white);
+    border: 0;
+    border-right: 2px dashed var(--border-light);
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.hub-ticket:last-child {
+    border-right: none;
+}
+
+.hub-ticket:hover {
+    background: var(--note-yellow);
+}
+
+.hub-ticket b {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--ink-blue);
+    letter-spacing: 1px;
+}
+
+.hub-ticket .icon {
+    width: 1.15em;
+    height: 1.15em;
+    color: var(--ink-blue);
+    flex-shrink: 0;
+}
+
+.hub-ticket em {
+    margin-left: auto;
+    font-style: normal;
+    font-size: 11px;
+    color: var(--text-subtle);
+    letter-spacing: 1px;
+}
+
+/* ---------- 页脚（沿用主站） ---------- */
+.hub-footer {
+    text-align: center;
+    padding: 12px 20px 20px;
+    font-size: 12px;
+    color: var(--text-subtle);
+}
+
+.hub-footer a {
+    color: var(--ink-blue);
+}
+
+/* ============================================================
+   五、响应式
+   ============================================================ */
+
+/* 桌面端：宽屏横向版式，主推位 + 玩法卡带架左右分栏 */
+@media (min-width: 1100px) {
+    #hub-page {
+        max-width: 1280px;
+    }
+
+    .hub-main-split {
+        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+        gap: 30px;
+        align-items: start;
+    }
+
+    .hub-split-lead,
+    .hub-split-side {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+    }
+
+    /* 右列玩法：桌面固定 2×2，避免一排拉得过宽 */
+    .hub-split-side .hub-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* 左列主推盒：改为竖向封面海报，适配窄列 */
+    .hub-split-lead .hub-box {
+        flex-wrap: wrap;
+    }
+
+    .hub-split-lead .hub-box-spine {
+        writing-mode: horizontal-tb;
+        width: 100%;
+        padding: 8px 12px;
+        justify-content: flex-start;
+        letter-spacing: 2px;
+    }
+
+    .hub-split-lead .hub-box-cover {
+        width: 100%;
+        height: 180px;
+        border-right: none;
+        border-bottom: 2px dashed var(--border-light);
+    }
+
+    .hub-split-lead .hub-box-cover .icon {
+        width: 72px;
+        height: 72px;
+    }
+
+    .hub-split-lead .hub-box-cta {
+        width: calc(100% - 32px);
+        justify-content: center;
+        margin: 0 16px 16px;
+    }
+}
+
+@media (max-width: 860px) {
+
+    /* 窄屏空间紧张：隐藏页面标题文字，给返回按钮 + 玩法按钮 + 各页操作按钮让位 */
+    header:has(.hub-nav)>.logo-text {
+        display: none;
+    }
+}
+
+@media (max-width: 760px) {
+
+    /* 手绘游戏机收进叠纸后面，主推盒封面带收窄 */
+    .hub-hero-art {
+        display: none;
+    }
+
+    .hub-hero-card {
+        gap: 0;
+    }
+
+    .hub-box-cover {
+        width: 92px;
+    }
+
+    .hub-box-cover .hub-box-video {
+        display: none;
+    }
+
+    .hub-box-cover .hub-box-cover-img {
+        display: block;
+    }
+
+    .hub-box-spine {
+        padding: 14px 5px;
+    }
+}
+
+@media (max-width: 680px) {
+    .hub-hero-sheet {
+        inset: 34px 10px -14px 14px;
+    }
+
+    .hub-hero-card {
+        padding: 26px 22px 22px;
+    }
+
+    .hub-hero-en {
+        font-size: 42px;
+    }
+
+    .hub-hero-marquee {
+        font-size: 10px;
+        letter-spacing: 1px;
+        gap: 6px 8px;
+    }
+
+    .hub-stats,
+    .hub-hero-stats {
+        gap: 0;
+    }
+
+    .hub-stat {
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 6px;
+    }
+
+    .hub-stat b {
+        font-size: 17px;
+    }
+
+    .hub-section-no {
+        font-size: 24px;
+    }
+
+    .hub-box {
+        flex-wrap: wrap;
+    }
+
+    .hub-box-spine {
+        writing-mode: horizontal-tb;
+        width: 100%;
+        padding: 8px 12px;
+        justify-content: flex-start;
+        letter-spacing: 2px;
+    }
+
+    .hub-box-cover {
+        width: 100%;
+        height: 74px;
+        border-right: none;
+        border-bottom: 2px dashed var(--border-light);
+    }
+
+    .hub-box-cover .icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .hub-box-cta {
+        width: 100%;
+        justify-content: center;
+        margin: 0 16px 16px;
+    }
+}
+
+@media (max-width: 560px) {
+    .hub-hero-en {
+        font-size: 32px;
+    }
+
+    .hub-hero-cn {
+        font-size: 13px;
+        letter-spacing: 3px;
+    }
+
+    .hub-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .hub-card-cover {
+        height: 76px;
+    }
+
+    .hub-ticket-strip {
+        flex-direction: column;
+    }
+
+    .hub-ticket {
+        border-right: none;
+        border-bottom: 2px dashed var(--border-light);
+    }
+
+    .hub-ticket:last-child {
+        border-bottom: none;
+    }
+
+    #hub-page {
+        gap: 26px;
+    }
+
+    /* 首页头部账号入口：窄屏只留图标，避免与品牌 logo 争位 */
+    header .header-actions .hub-nav-account {
+        padding: 5px 9px;
+    }
+
+    header .header-actions .hub-nav-account span {
+        display: none;
+    }
+}
+
+/* 尊重系统减弱动效设置 */
+@media (prefers-reduced-motion: reduce) {
+
+    .hub-card,
+    .hub-filter,
+    .hub-stamp,
+    .hub-live-dot {
+        animation: none;
+    }
+
+    .hub-card:hover,
+    .hub-box:hover,
+    .hub-filter:hover {
+        transform: none;
+    }
+}

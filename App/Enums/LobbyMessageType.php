@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Enums;
+
+/**
+ * 聊天室消息类型枚举
+ *
+ * 用于扩展特殊消息（卡片、分享等），在数据表 lobby_messages_* 的 type 列存储。
+ */
+enum LobbyMessageType: string
+{
+    /** 普通文本消息 */
+    case TEXT = 'text';
+
+    /** 结构化 Markdown 消息（content 为 {"v":1,"blocks":[...]} JSON） */
+    case MARKDOWN = 'markdown';
+
+    /** 表情消息 */
+    case STICKER = 'sticker';
+
+    /** 图片消息（content 存图片 URL） */
+    case IMAGE = 'image';
+
+    /** 战绩分享卡片 */
+    case CARD_SHARE_RECORD = 'card.share.record';
+
+    /** 五子棋对局邀请卡片 */
+    case CARD_INVITE_GOMOKU = 'card.invite.gomoku';
+
+    /** 缘分（默契测试）官宣卡片 */
+    case CARD_SHARE_FATE = 'card.share.fate';
+
+    /**
+     * 判断该类型是否属于卡片类（需要特殊渲染）
+     */
+    public function isCard(): bool
+    {
+        return str_starts_with($this->value, 'card.');
+    }
+}
