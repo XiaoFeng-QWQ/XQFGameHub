@@ -44,6 +44,7 @@ class PlayerStatsRepository
             fp VARCHAR(64) NOT NULL DEFAULT "",
             turing_test TEXT,
             gomoku TEXT,
+            soup TEXT,
             messages TEXT,
             worn_tags TEXT NULL DEFAULT NULL COMMENT "佩戴标签 JSON 数组",
             worn_special_tags TEXT NULL DEFAULT NULL COMMENT "佩戴特殊标签 JSON 数组",
@@ -56,6 +57,8 @@ class PlayerStatsRepository
         Database::ensureColumn($pdo, 'player_data', 'password_set', 'TINYINT(1) NOT NULL DEFAULT 1 COMMENT "用户是否已自行设置密码（0=系统随机/OAuth 注册，1=用户设置）"');
         // 兼容存量表：补昵称修改时间列
         Database::ensureColumn($pdo, 'player_data', 'nickname_updated_at', 'INT NOT NULL DEFAULT 0 COMMENT "上次修改昵称时间戳（每月限改一次）"');
+        // 兼容存量表：补海龟汤战绩列
+        Database::ensureColumn($pdo, 'player_data', 'soup', 'TEXT NULL DEFAULT NULL COMMENT "海龟汤战绩（PHP 序列化数组）"');
 
         // 对手标签累计表
         $pdo->exec('CREATE TABLE IF NOT EXISTS player_tags (
@@ -108,6 +111,13 @@ class PlayerStatsRepository
                 'draws' => 0,
                 'active_hours' => [],
             ],
+            'soup' => [
+                'total_games' => 0,
+                'wins' => 0,
+                'losses' => 0,
+                'as_host' => 0,
+                'as_guesser' => 0,
+            ],
             default => [],
         };
     }
@@ -116,6 +126,7 @@ class PlayerStatsRepository
     {
         return match ($gameMode) {
             'gomoku'  => 'gomoku',
+            'soup'    => 'soup',
             default   => 'turing_test',
         };
     }
@@ -210,79 +221,6 @@ class PlayerStatsRepository
         $stmt->execute([$ip, $fp]);
         $row = $stmt->fetch();
         return $row ?: null;
-    }
-
-    /**
-     * 同步客户端 UserData 到服务端（设置页上传按钮触发）
-     * 将本地 localStorage 的 camelCase 战绩映射到服务端 snake_case 格式
-     */
-    public static function syncUserData(string $playerId, string $nickname, string $ip, string $fp, array $localStats): bool
-    {
-        $player = self::findById($playerId);
-
-        if (!$player) {
-            Logger::warning('UserData sync: player not found', ['player_id' => $playerId]);
-            return false;
-        }
-
-        // 已有玩家：更新昵称/IP/指纹，合并战绩（取最大值）
-        self::updateNickname($playerId, $nickname, $ip, $fp);
-
-        $existing = self::getGameStats($playerId, 'turing_test');
-        $incoming = self::mapLocalStatsToServer($localStats);
-        $merged = self::mergeStats($existing, $incoming);
-
-        self::saveGameStats($playerId, 'turing_test', $merged);
-
-        $pdo = Database::connect();
-        $stmt = $pdo->prepare('UPDATE player_data SET last_played_at = ? WHERE id = ?');
-        $stmt->execute([time(), $playerId]);
-
-        Logger::info('UserData synced', ['player_id' => $playerId]);
-
-        return true;
-    }
-
-    /**
-     * 将客户端 camelCase 战绩映射到服务端 snake_case 格式
-     */
-    private static function mapLocalStatsToServer(array $local): array
-    {
-        return [
-            'total_games'    => max(0, (int)($local['total']        ?? 0)),
-            'wins'           => max(0, (int)($local['wins']         ?? 0)),
-            'losses'         => max(0, (int)($local['losses']       ?? 0)),
-            'timeouts'       => max(0, (int)($local['timeouts']     ?? 0)),
-            'guess_human'    => max(0, (int)($local['guessHuman']   ?? 0)),
-            'guess_ai'       => max(0, (int)($local['guessAI']      ?? 0)),
-            'opp_human'      => max(0, (int)($local['oppHuman']     ?? 0)),
-            'opp_ai'         => max(0, (int)($local['oppAI']        ?? 0)),
-            'total_msgs'     => max(0, (int)($local['totalMsgs']    ?? 0)),
-            'total_duration' => max(0, (int)($local['totalDuration'] ?? 0)),
-        ];
-    }
-
-    /**
-     * 合并战绩：逐字段取最大值，避免覆盖丢失
-     */
-    private static function mergeStats(array $existing, array $incoming): array
-    {
-        $keys = [
-            'total_games',
-            'wins',
-            'losses',
-            'timeouts',
-            'guess_human',
-            'guess_ai',
-            'opp_human',
-            'opp_ai',
-            'total_msgs',
-            'total_duration'
-        ];
-        foreach ($keys as $key) {
-            $existing[$key] = max((int)($existing[$key] ?? 0), (int)($incoming[$key] ?? 0));
-        }
-        return $existing;
     }
 
     /**
@@ -668,6 +606,37 @@ class PlayerStatsRepository
     public static function recordGameDirect(array $params): void
     {
         self::recordGame($params);
+    }
+
+    /**
+     * 记录一局海龟汤结果（出题人 / 猜题人分别累计）
+     *
+     * @param string $role 'host' 出题人 | 'guesser' 猜题人
+     */
+    public static function recordSoupGame(string $playerId, bool $won, string $role): void
+    {
+        if ($playerId === '') return;
+        $player = self::findById($playerId);
+        if (!$player) return;
+
+        $stats = self::getGameStats($playerId, 'soup');
+        $stats['total_games']++;
+        if ($won) {
+            $stats['wins']++;
+        } else {
+            $stats['losses']++;
+        }
+        if ($role === 'host') {
+            $stats['as_host']++;
+        } else {
+            $stats['as_guesser']++;
+        }
+
+        self::saveGameStats($playerId, 'soup', $stats);
+
+        $pdo = Database::connect();
+        $stmt = $pdo->prepare('UPDATE player_data SET last_played_at = ? WHERE id = ?');
+        $stmt->execute([time(), $playerId]);
     }
 
     /**

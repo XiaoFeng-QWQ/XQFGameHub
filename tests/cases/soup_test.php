@@ -154,7 +154,7 @@ function test_soup_puzzle_service_validate_rules(): void
     assert_eq(3, $clean['difficulty'], 'difficulty 应钳制到上限 3');
     assert_eq(['a', 'b'], $clean['key_points'], '关键点应 trim 并剔除空项');
     assert_eq(['h1'], $clean['hints'], '提示应 trim 并剔除空项');
-    assert_eq('public', $clean['scope'], 'is_public=true 应得到 public 作用域');
+    assert_true(!array_key_exists('scope', $clean), '新建汤面一律私有，is_public 不再决定作用域');
     assert_true($clean['title'] !== '', 'title 为空时应从 surface 自动生成');
 
     $dirty = soup_test_call_private($svc, 'validate', [[
@@ -164,12 +164,15 @@ function test_soup_puzzle_service_validate_rules(): void
     assert_not_contains('<script>', $dirty['surface'], '汤面应被 XSS 清理');
 }
 
-function test_soup_puzzle_service_public_view_hides_truth(): void
+function test_soup_puzzle_service_public_view_shows_truth_and_author(): void
 {
     $svc = new SoupPuzzleService();
-    $view = soup_test_call_private($svc, 'toPublicView', [[
+
+    // 官方题：公开即作品，汤底对所有人可见，作者显示「官方」
+    $official = soup_test_call_private($svc, 'toPublicView', [[
         'id'         => 7,
         'source'     => 'official',
+        'owner_id'   => '',
         'scope'      => 'public',
         'title'      => '标题',
         'surface'    => '汤面',
@@ -179,11 +182,51 @@ function test_soup_puzzle_service_public_view_hides_truth(): void
         'tags'       => '惊悚',
         'used_count' => 5,
     ]]);
+    assert_eq(7, $official['id']);
+    assert_eq(5, $official['used_count']);
+    assert_eq('机密汤底', $official['truth'], '公开池应展示汤底');
+    assert_eq('官方', $official['author']);
 
-    assert_eq(7, $view['id']);
-    assert_eq(5, $view['used_count']);
-    assert_true(!array_key_exists('truth', $view), '公开视图绝不能包含汤底');
-    assert_true(!array_key_exists('key_points', $view), '公开视图绝不能包含判定关键点');
+    // 玩家公开题：作者取昵称
+    $member = soup_test_call_private($svc, 'toPublicView', [[
+        'id' => 8, 'source' => 'member', 'owner_id' => 'u1', 'scope' => 'public',
+        'title' => 't', 'surface' => 's', 'truth' => 'x', 'difficulty' => 1,
+        'tags' => '', 'used_count' => 0,
+    ], ['u1' => '小明']]);
+    assert_eq('小明', $member['author']);
+
+    // 作者昵称缺失：显示「已注销用户」
+    $gone = soup_test_call_private($svc, 'toPublicView', [[
+        'id' => 9, 'source' => 'member', 'owner_id' => 'u2', 'scope' => 'public',
+        'title' => 't', 'surface' => 's', 'truth' => 'x', 'difficulty' => 1,
+        'tags' => '', 'used_count' => 0,
+    ], []]);
+    assert_eq('已注销用户', $gone['author'], '作者不存在时应显示已注销用户');
+
+    // 衍生作品：署名指向最初的原始作者，而非复制者
+    $deriv = soup_test_call_private($svc, 'toPublicView', [[
+        'id' => 10, 'source' => 'member', 'owner_id' => 'copier', 'origin_author_id' => 'u1',
+        'scope' => 'public', 'title' => 't', 'surface' => 's', 'truth' => 'x',
+        'difficulty' => 1, 'tags' => '', 'used_count' => 0,
+    ], ['u1' => '小明', 'copier' => '复制者']]);
+    assert_eq('小明', $deriv['author'], '衍生作品应署名原始作者');
+    assert_true(!empty($deriv['is_derivative']), '衍生作品应带 is_derivative 标记');
+
+    // 原始作者账号已注销：衍生作品显示「已注销用户」
+    $derivGone = soup_test_call_private($svc, 'toPublicView', [[
+        'id' => 11, 'source' => 'member', 'owner_id' => 'copier', 'origin_author_id' => 'u2',
+        'scope' => 'public', 'title' => 't', 'surface' => 's', 'truth' => 'x',
+        'difficulty' => 1, 'tags' => '', 'used_count' => 0,
+    ], ['copier' => '复制者']]);
+    assert_eq('已注销用户', $derivGone['author'], '原始作者注销后衍生作品应显示已注销用户');
+
+    // 官方题的衍生作品：原作者显示「官方」
+    $derivOfficial = soup_test_call_private($svc, 'toPublicView', [[
+        'id' => 12, 'source' => 'member', 'owner_id' => 'copier', 'origin_author_id' => 'official',
+        'scope' => 'public', 'title' => 't', 'surface' => 's', 'truth' => 'x',
+        'difficulty' => 1, 'tags' => '', 'used_count' => 0,
+    ], ['copier' => '复制者']]);
+    assert_eq('官方', $derivOfficial['author'], '官方题的衍生作品应署名官方');
 }
 
 // ==================== 纯逻辑：房间编解码往返 ====================
@@ -340,51 +383,66 @@ function test_soup_puzzle_repository_crud_and_ownership(): void
     }
 }
 
-function test_soup_puzzle_service_share_and_resolve(): void
+function test_soup_puzzle_service_publish_and_resolve(): void
 {
     SoupPuzzleRepository::ensureTable();
     $owner  = soup_test_uid('soup_test_');
+    $copier = soup_test_uid('soup_copy_');
     $svc    = new SoupPuzzleService();
     $pdo    = Database::connect();
     $puzzleId = 0;
 
     try {
         $created = $svc->create($owner, [
-            'title'     => '共享测试',
+            'title'     => '公开测试',
             'surface'   => '汤面内容',
             'truth'     => '机密汤底',
-            'is_public' => false,
+            'is_public' => true, // 已废弃：新建一律私有
         ]);
         assert_true(!empty($created['success']), '创建应成功: ' . ($created['error'] ?? ''));
         $puzzleId = (int)$created['id'];
 
-        // 私有题：作为公开题选应失败，作为自己的题选应成功
+        // 新建即为私有：可作为自己的题选，不能作为公开题选
         assert_true(!$svc->resolveForRoom($owner, 'public', $puzzleId)['success'], '私有题不应能作为公开题选');
         $mine = $svc->resolveForRoom($owner, 'mine', $puzzleId);
-        assert_true($mine['success'], '自己的题应可选');
+        assert_true($mine['success'], '自己的私有题应可选');
         assert_eq('机密汤底', $mine['puzzle']['truth'], '服务端选题应能拿到汤底');
 
-        // 切换为公开
-        $share = $svc->toggleShare($owner, $puzzleId);
-        assert_true(!empty($share['success']), '共享切换应成功');
-        assert_eq('public', $share['scope'], '首次切换应变为 public');
-        assert_true($svc->resolveForRoom($owner, 'public', $puzzleId)['success'], '公开后应能作为公开题选');
+        // 公开（单向不可逆）
+        $published = $svc->publish($owner, $puzzleId);
+        assert_true(!empty($published['success']), '公开应成功');
+        assert_eq('public', $published['scope']);
 
-        // 公开池应包含该题且隐藏汤底
+        // 公开后永久退出可游玩池：本人也不能再用于创建房间
+        assert_true(!$svc->resolveForRoom($owner, 'mine', $puzzleId)['success'], '已公开的汤面不应能用于创建房间');
+
+        // 不可撤回 / 不可编辑
+        assert_true(empty($svc->publish($owner, $puzzleId)['success']), '已公开的汤面不可重复公开或撤回');
+        assert_true(empty($svc->update($owner, $puzzleId, ['surface' => '改', 'truth' => '改'])['success']), '已公开的汤面不可编辑');
+
+        // 公开池包含该题，且汤底对所有人可见
         $found = null;
         foreach ($svc->listPublic() as $p) {
             if ((int)$p['id'] === $puzzleId) { $found = $p; break; }
         }
         assert_true($found !== null, '公开池应包含该题');
-        assert_true(!array_key_exists('truth', $found), '公开池不应含汤底');
-        assert_true(!array_key_exists('key_points', $found), '公开池不应含关键点');
+        assert_eq('机密汤底', $found['truth'], '公开池应展示汤底');
 
-        // 切回私有
-        $share2 = $svc->toggleShare($owner, $puzzleId);
-        assert_eq('private', $share2['scope'], '再次切换应回到 private');
-        assert_true(!$svc->resolveForRoom($owner, 'public', $puzzleId)['success'], '切回私有后不应能作为公开题选');
+        // 复制公开汤面：衍生作品记录最初的原始作者
+        $copied = $svc->copyPublic($copier, $puzzleId);
+        assert_true(!empty($copied['success']), '复制应成功: ' . ($copied['error'] ?? ''));
+        $copyRow = SoupPuzzleRepository::findById((int)$copied['id']);
+        assert_eq($owner, (string)$copyRow['origin_author_id'], '衍生作品应记录原始作者 ID');
+
+        // 删除是终态：公开汤面可删除，删除后从公开池消失（衍生作品另行保留）
+        assert_true(!empty($svc->delete($owner, $puzzleId)['success']), '公开的汤面应可删除');
+        foreach ($svc->listPublic() as $p) {
+            assert_true((int)$p['id'] !== $puzzleId, '删除后不应再出现在公开池');
+        }
+        assert_true(SoupPuzzleRepository::findById((int)$copied['id']) !== null, '原汤删除后衍生作品仍应存在');
     } finally {
         $pdo->exec('DELETE FROM soup_puzzles WHERE owner_id = ' . $pdo->quote($owner));
+        $pdo->exec('DELETE FROM soup_puzzles WHERE owner_id = ' . $pdo->quote($copier));
     }
 }
 

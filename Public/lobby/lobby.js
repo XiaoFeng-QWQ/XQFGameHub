@@ -131,7 +131,7 @@
     let audioUnlocked = false;    // 浏览器自动播放策略是否已解锁
     let songListen = getUserdata().song_listen ?? false;  // 是否参与听歌
     let songSyncMode = getUserdata().song_sync_mode ?? true;  // true=同步模式，false=个人模式
-    let songPlayMode = getUserdata().song_play_mode ?? 'loop';  // 个人模式播放方式：loop列表循环/shuffle随机/order顺序
+    let songPlayMode = getUserdata().song_play_mode ?? 'loop';  // 个人模式播放方式：loop列表循环/loop-one单曲循环/shuffle随机/order顺序
 
     // ==================== 浏览器通知 ====================
     let notifyEnabled = getUserdata().lobby_notify ?? false;
@@ -2000,7 +2000,16 @@
                 label: '举报',
                 class: 'danger',
                 action: function () {
-                    showReportDialog(data.id, data.sender_name, data.content || '');
+                    // 表情 / 图片消息没有文本 content：给出可读的举报预览
+                    let reportPreview = '';
+                    if (data.type === 'sticker' && data.sticker_id) {
+                        reportPreview = data.sticker_name ? ('[表情] ' + data.sticker_name) : '[表情]';
+                    } else if (data.type === 'image') {
+                        reportPreview = '[图片]';
+                    } else {
+                        reportPreview = data.content || '';
+                    }
+                    showReportDialog(data.id, data.sender_name, reportPreview);
                 }
             });
         }
@@ -7450,6 +7459,10 @@
             if (String(songList[k].id) === String(songPlaying.id)) { curIdx = k; break; }
         }
         // 个人模式：按用户选择的播放方式取下一首；同步模式固定列表循环（由服务端统一管理队列）
+        if (!songSyncMode && songPlayMode === 'loop-one') {
+            // 单曲循环：始终返回当前这首，播完自动重播
+            return curIdx !== -1 ? songList[curIdx] : songPlaying;
+        }
         if (!songSyncMode && songPlayMode === 'shuffle') {
             let others = songList.filter(s => String(s.id) !== String(songPlaying.id));
             if (!others.length) return songList[0] || null;
@@ -7628,8 +7641,8 @@
     // （个人模式不推动服务器共享队列，也不依赖服务器广播，全靠本地 onended/进度定时器触发）
     function advancePersonal() {
         let next = getNextSong();
-        // 队列里只有刚播完的这首歌时，不原地循环，直接停止
-        if (next && songPlaying && String(next.id) === String(songPlaying.id)) {
+        // 队列里只有刚播完的这首歌时，不原地循环，直接停止（单曲循环模式除外）
+        if (songPlayMode !== 'loop-one' && next && songPlaying && String(next.id) === String(songPlaying.id)) {
             next = null;
         }
         if (next && next.url) {

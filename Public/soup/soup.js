@@ -37,11 +37,11 @@ let roundInfo = null;   // soup_round 载荷（对局页汤面卡）
 let revealWinner = '';  // soup_won 带来的命中者昵称
 let sysLog = [];        // 对局内系统消息（重渲染时保留）
 
-let pickTab = 'random';
-let pickCache = {};     // source -> puzzles[]
+let pickCache = {};     // mine / public -> puzzles[]
 let pickedId = 0;       // 当前已选题 id（高亮）
 
 let myPuzzles = [];
+let puzzleSource = 'mine'; // 我的汤面页当前分区：mine / public / official
 let editingId = 0;
 let filterScope = 'all';
 
@@ -71,7 +71,6 @@ function el(tag, attrs = {}, text = '') {
 const SOUP_ICONS = {
     pot: '<path d="M3 12h18a9 9 0 0 1-9 9 9 9 0 0 1-9-9z"/><path d="M8 8c0-1.5 1-2 1-3.5"/><path d="M12 8c0-1.5 1-2 1-3.5"/><path d="M16 8c0-1.5 1-2 1-3.5"/>',
     trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a3 3 0 0 0 3 5"/><path d="M17 6h3a3 3 0 0 1-3 5"/><path d="M12 14v7"/><path d="M8 21h8"/>',
-    shuffle: '<path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
 };
 
 function iconEl(name, size = 14) {
@@ -507,8 +506,10 @@ function renderWait() {
         wp.appendChild(el('div', {}, r.is_host ? '尚未选择汤面' : '出题人正在选题…'));
     }
 
-    // 选题面板（房主专用）
-    $('pick-panel').style.display = (r.is_host && r.state !== 'playing') ? 'block' : 'none';
+    // 选题面板（房主专用，只能从我自己的汤面中选）
+    const showPick = r.is_host && r.state !== 'playing';
+    $('pick-panel').style.display = showPick ? 'block' : 'none';
+    if (showPick) renderPickList();
 
     // 成员
     const members = $('wait-members');
@@ -536,69 +537,49 @@ function renderWait() {
     }
 }
 
-// ==================== 选题面板 ====================
+// ==================== 选题面板（仅限出题人自己的汤面） ====================
 
-function switchPickTab(source) {
-    pickTab = source;
-    document.querySelectorAll('.pick-tab').forEach((t) => {
-        t.classList.toggle('active', t.dataset.source === source);
-    });
-    renderPickList();
-}
+let pickListSeq = 0;
 
 async function renderPickList() {
     const box = $('pick-list');
+    const seq = ++pickListSeq;
     box.textContent = '';
 
-    if (pickTab === 'random') {
-        const item = el('div', { className: 'pick-item' + (pickedId ? '' : ' picked') });
-        const title = el('div', { className: 'pi-title' });
-        const label = el('span', { style: 'display:inline-flex;align-items:center;gap:6px;' });
-        label.appendChild(iconEl('shuffle', 14));
-        label.appendChild(document.createTextNode('随机来一锅'));
-        title.appendChild(label);
-        item.appendChild(title);
-        item.appendChild(el('div', { className: 'pi-meta' }, '从公开汤池随机抽取'));
-        item.addEventListener('click', () => sendPick('random', 0));
-        box.appendChild(item);
+    let puzzles;
+    try {
+        puzzles = await fetchMyPuzzles();
+    } catch (err) {
+        if (seq !== pickListSeq) return;
+        box.appendChild(el('div', { className: 'pick-empty' }, '加载失败：' + err.message));
+        return;
+    }
+    if (seq !== pickListSeq) return; // 已有更新的渲染，放弃本次结果
+    box.textContent = '';
+
+    // 已公开的汤面永久退出可游玩池，选题时只列私有汤面
+    const pickable = puzzles.filter((p) => p.scope !== 'public');
+    if (!pickable.length) {
+        box.appendChild(el('div', { className: 'pick-empty' },
+            puzzles.length
+                ? '你的汤面都已公开，公开后不可再用于开局；去「我的汤面」新建或复制一锅吧'
+                : '你还没有上传汤面，去「我的汤面」写一锅吧'));
         return;
     }
 
-    try {
-        let puzzles;
-        if (pickTab === 'mine') {
-            puzzles = await fetchMyPuzzles();
-        } else {
-            puzzles = await fetchPublicPuzzles();
-            puzzles = puzzles.filter((p) => pickTab === 'official'
-                ? p.source === 'official'
-                : p.source === 'member');
-        }
-
-        if (!puzzles.length) {
-            box.appendChild(el('div', { className: 'pick-empty' },
-                pickTab === 'mine' ? '你还没有上传汤面，去「我的汤面」写一锅吧'
-                    : '该来源暂无可用题目'));
-            return;
-        }
-
-        puzzles.forEach((p) => {
-            const item = el('div', {
-                className: 'pick-item' + (p.id === pickedId ? ' picked' : ''),
-            });
-            const head = el('div', { className: 'pi-title' });
-            head.appendChild(el('span', {}, p.title || '未命名'));
-            head.appendChild(el('span', {}, stars(p.difficulty)));
-            item.appendChild(head);
-            item.appendChild(el('div', { className: 'pi-meta' },
-                (p.tags || '无标签') + ' · 被选 ' + (p.used_count || 0) + ' 次'));
-            item.addEventListener('click', () => sendPick(pickTab, p.id));
-            box.appendChild(item);
+    pickable.forEach((p) => {
+        const item = el('div', {
+            className: 'pick-item' + (p.id === pickedId ? ' picked' : ''),
         });
-    } catch (err) {
-        box.textContent = '';
-        box.appendChild(el('div', { className: 'pick-empty' }, '加载失败：' + err.message));
-    }
+        const head = el('div', { className: 'pi-title' });
+        head.appendChild(el('span', {}, p.title || '未命名'));
+        head.appendChild(el('span', {}, stars(p.difficulty)));
+        item.appendChild(head);
+        item.appendChild(el('div', { className: 'pi-meta' },
+            (p.tags || '无标签') + ' · 被选 ' + (p.used_count || 0) + ' 次'));
+        item.addEventListener('click', () => sendPick('mine', p.id));
+        box.appendChild(item);
+    });
 }
 
 // ==================== 对局页渲染 ====================
@@ -904,7 +885,95 @@ async function loadPuzzlesPage() {
     }
     showPage('puzzles');
     pickCache.mine = null;
-    await renderMyPuzzles();
+    pickCache.public = null;
+    await switchPuzzleSource('mine');
+}
+
+// 我的汤面页分区切换：mine 管理自己的汤面，public/official 浏览并复制
+async function switchPuzzleSource(source) {
+    puzzleSource = source;
+    document.querySelectorAll('#puzzle-source-tabs .pick-tab').forEach((t) => {
+        t.classList.toggle('active', t.dataset.source === source);
+    });
+    const isMine = source === 'mine';
+    $('puzzle-filter').style.display = isMine ? '' : 'none';
+    $('btn-new-puzzle').style.display = isMine ? '' : 'none';
+    if (isMine) await renderMyPuzzles();
+    else await renderPublicPuzzles();
+}
+
+// 公开汤池 / 官方题库：只读浏览，可一键复制到我的汤面
+async function renderPublicPuzzles() {
+    const grid = $('my-puzzle-grid');
+    grid.textContent = '';
+    grid.appendChild(el('div', { className: 'puzzle-empty' }, '加载中…'));
+
+    let puzzles;
+    try {
+        puzzles = await fetchPublicPuzzles();
+    } catch (err) {
+        grid.textContent = '';
+        grid.appendChild(el('div', { className: 'puzzle-empty' }, '加载失败：' + err.message));
+        return;
+    }
+
+    grid.textContent = '';
+    const list = puzzles.filter((p) => puzzleSource === 'official'
+        ? p.source === 'official'
+        : p.source === 'member');
+
+    if (!list.length) {
+        grid.appendChild(el('div', { className: 'puzzle-empty' },
+            puzzleSource === 'official' ? '官方题库暂无可用题目' : '公开汤池暂无题目'));
+        return;
+    }
+
+    list.forEach((p) => {
+        const isOfficial = p.source === 'official';
+        const card = el('div', { className: 'puzzle-card' });
+
+        const title = el('div', { className: 'pc-title' });
+        title.appendChild(el('span', {}, p.title || '未命名'));
+        title.appendChild(el('span', { className: 'scope-chip' + (isOfficial ? ' official' : ' public') },
+            isOfficial ? '官方' : '公开'));
+        card.appendChild(title);
+
+        card.appendChild(el('div', { className: 'pc-author' },
+            (p.is_derivative ? '原作者：' : '作者：') + (p.author || '佚名')));
+        card.appendChild(el('div', { className: 'pc-surface' }, p.surface || ''));
+
+        if (p.truth) {
+            const truth = el('div', { className: 'pc-truth' });
+            truth.appendChild(el('div', { className: 'pc-truth-label' }, '汤底（公开）'));
+            truth.appendChild(el('div', { className: 'pc-truth-text' }, p.truth));
+            card.appendChild(truth);
+        }
+
+        const meta = el('div', { className: 'pc-meta' });
+        meta.appendChild(el('span', {}, stars(p.difficulty)));
+        if (p.tags) meta.appendChild(el('span', {}, p.tags));
+        meta.appendChild(el('span', {}, '被选 ' + (p.used_count || 0) + ' 次'));
+        card.appendChild(meta);
+
+        const actions = el('div', { className: 'pc-actions' });
+        const copyBtn = el('button', { className: 'doodle-btn' }, '复制到我的汤面');
+        copyBtn.style.cssText = 'color:var(--ink-blue);border-color:var(--ink-blue);';
+        copyBtn.addEventListener('click', async () => {
+            showLoading('复制中…');
+            try {
+                await api('POST', '/api/soup/public-puzzles/' + p.id + '/copy');
+                pickCache.mine = null;
+                showTopToast('已复制到「我的汤面」', false);
+            } catch (err) {
+                showTopToast(err.message, true);
+            }
+            hideLoading();
+        });
+        actions.appendChild(copyBtn);
+        card.appendChild(actions);
+
+        grid.appendChild(card);
+    });
 }
 
 async function renderMyPuzzles() {
@@ -935,7 +1004,7 @@ async function renderMyPuzzles() {
         const title = el('div', { className: 'pc-title' });
         title.appendChild(el('span', {}, p.title || '未命名'));
         title.appendChild(el('span', { className: 'scope-chip' + (p.scope === 'public' ? ' public' : '') },
-            p.scope === 'public' ? '已共享' : '私有'));
+            p.scope === 'public' ? '已公开' : '私有'));
         card.appendChild(title);
 
         card.appendChild(el('div', { className: 'pc-surface' }, p.surface || ''));
@@ -948,47 +1017,63 @@ async function renderMyPuzzles() {
 
         const actions = el('div', { className: 'pc-actions' });
 
-        const editBtn = el('button', { className: 'doodle-btn' }, '编辑');
-        editBtn.addEventListener('click', () => openEditor(p));
-        actions.appendChild(editBtn);
+        if (p.scope === 'public') {
+            // 公开后不可编辑；但可删除（删除即终态，仅移除原汤，衍生作品不受影响）
+            actions.appendChild(el('span', { className: 'public-locked' }, '已公开 · 不可编辑'));
+            const pubDelBtn = el('button', { className: 'doodle-btn' }, '删除');
+            pubDelBtn.style.cssText = 'color:var(--danger);border-color:var(--danger);';
+            pubDelBtn.addEventListener('click', () => deleteMyPuzzle(p,
+                '删除后原汤将从公开池移除，已产生的衍生作品不受影响。\n删除汤面《' + (p.title || '未命名') + '》？不可恢复'));
+            actions.appendChild(pubDelBtn);
+        } else {
+            const editBtn = el('button', { className: 'doodle-btn' }, '编辑');
+            editBtn.addEventListener('click', () => openEditor(p));
+            actions.appendChild(editBtn);
 
-        const shareBtn = el('button', { className: 'doodle-btn' },
-            p.scope === 'public' ? '取消共享' : '共享');
-        shareBtn.addEventListener('click', async () => {
-            showLoading('切换共享…');
-            try {
-                const data = await api('POST', '/api/soup/my-puzzles/' + p.id + '/share');
-                p.scope = data.scope || (p.scope === 'public' ? 'private' : 'public');
-                pickCache.mine = null;
-                showTopToast(p.scope === 'public' ? '已共享到公开汤池' : '已转为私有', false);
-                renderMyPuzzles();
-            } catch (err) {
-                showTopToast(err.message, true);
-            }
-            hideLoading();
-        });
-        actions.appendChild(shareBtn);
+            const publishBtn = el('button', { className: 'doodle-btn' }, '公开');
+            publishBtn.style.cssText = 'color:var(--ink-blue);border-color:var(--ink-blue);';
+            publishBtn.addEventListener('click', async () => {
+                if (!confirm('公开后不可编辑，汤底将对所有人可见，且该汤面将不再用于创建新房间。\n公开后可删除，删除只影响原汤，已产生的衍生作品不受影响。\n是否确认公开？')) return;
+                showLoading('公开中…');
+                try {
+                    const data = await api('POST', '/api/soup/my-puzzles/' + p.id + '/share');
+                    p.scope = data.scope || 'public';
+                    pickCache.mine = null;
+                    pickCache.public = null;
+                    showTopToast('已公开', false);
+                    renderMyPuzzles();
+                } catch (err) {
+                    showTopToast(err.message, true);
+                }
+                hideLoading();
+            });
+            actions.appendChild(publishBtn);
 
-        const delBtn = el('button', { className: 'doodle-btn' }, '删除');
-        delBtn.style.cssText = 'color:var(--danger);border-color:var(--danger);';
-        delBtn.addEventListener('click', async () => {
-            if (!confirm('删除汤面《' + (p.title || '未命名') + '》？不可恢复')) return;
-            showLoading('删除中…');
-            try {
-                await api('DELETE', '/api/soup/my-puzzles/' + p.id);
-                pickCache.mine = null;
-                showTopToast('已删除', false);
-                renderMyPuzzles();
-            } catch (err) {
-                showTopToast(err.message, true);
-            }
-            hideLoading();
-        });
-        actions.appendChild(delBtn);
+            const delBtn = el('button', { className: 'doodle-btn' }, '删除');
+            delBtn.style.cssText = 'color:var(--danger);border-color:var(--danger);';
+            delBtn.addEventListener('click', () => deleteMyPuzzle(p,
+                '删除汤面《' + (p.title || '未命名') + '》？不可恢复'));
+            actions.appendChild(delBtn);
+        }
 
         card.appendChild(actions);
         grid.appendChild(card);
     });
+}
+
+async function deleteMyPuzzle(puzzle, tip) {
+    if (!confirm(tip)) return;
+    showLoading('删除中…');
+    try {
+        await api('DELETE', '/api/soup/my-puzzles/' + puzzle.id);
+        pickCache.mine = null;
+        pickCache.public = null;
+        showTopToast('已删除', false);
+        renderMyPuzzles();
+    } catch (err) {
+        showTopToast(err.message, true);
+    }
+    hideLoading();
 }
 
 // ==================== 汤面编辑器 ====================
@@ -1003,7 +1088,6 @@ function openEditor(puzzle) {
     $('editor-hints').value = puzzle ? (puzzle.hints || []).join('\n') : '';
     $('editor-difficulty').value = puzzle ? String(puzzle.difficulty || 2) : '2';
     $('editor-tags').value = puzzle ? (puzzle.tags || '') : '';
-    $('editor-share').checked = puzzle ? (puzzle.scope === 'public') : false;
     $('puzzle-editor').style.display = 'flex';
 }
 
@@ -1022,7 +1106,6 @@ async function saveEditor() {
         hints: $('editor-hints').value.split('\n').map(s => s.trim()).filter(Boolean),
         difficulty: parseInt($('editor-difficulty').value, 10) || 1,
         tags: $('editor-tags').value.trim(),
-        is_public: $('editor-share').checked,
     };
 
     showLoading('保存中…');
@@ -1096,8 +1179,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('btn-wait-leave').addEventListener('click', () => {
         if (confirm('确定离开？（房主离开将解散汤房）')) sendLeave();
     });
-    document.querySelectorAll('.pick-tab').forEach((tab) => {
-        tab.addEventListener('click', () => switchPickTab(tab.dataset.source));
+    document.querySelectorAll('#puzzle-source-tabs .pick-tab').forEach((tab) => {
+        tab.addEventListener('click', () => switchPuzzleSource(tab.dataset.source));
     });
 
     // 对局页

@@ -121,15 +121,9 @@
                 <div id="wait-puzzle" class="wait-puzzle"></div>
 
                 <div id="pick-panel" class="pick-panel" style="display:none;">
-                    <div class="pick-label">选择一锅汤</div>
-                    <div class="pick-tabs">
-                        <button class="pick-tab active" data-source="random">随机一汤</button>
-                        <button class="pick-tab" data-source="official">官方题库</button>
-                        <button class="pick-tab" data-source="public">公开汤池</button>
-                        <button class="pick-tab" data-source="mine">我的汤面</button>
-                    </div>
+                    <div class="pick-label">从「我的汤面」中选一锅开汤</div>
                     <div id="pick-list" class="pick-list">
-                        <div class="pick-empty">选择一种来源</div>
+                        <div class="pick-empty">加载中…</div>
                     </div>
                 </div>
 
@@ -183,10 +177,15 @@
         <section id="page-puzzles" style="display:none;">
             <div class="puzzle-toolbar">
                 <button class="doodle-btn" id="btn-puzzles-back">返回大厅</button>
+                <div class="pick-tabs puzzle-source-tabs" id="puzzle-source-tabs">
+                    <button class="pick-tab active" data-source="mine">我的汤面</button>
+                    <button class="pick-tab" data-source="public">公开汤池</button>
+                    <button class="pick-tab" data-source="official">官方题库</button>
+                </div>
                 <select class="doodle-input" id="puzzle-filter">
                     <option value="all">全部</option>
                     <option value="private">私有</option>
-                    <option value="public">已共享</option>
+                    <option value="public">已公开</option>
                 </select>
                 <button class="doodle-btn" id="btn-new-puzzle"
                     style="color:var(--ink-blue);border-color:var(--ink-blue);">＋ 新建汤面</button>
@@ -225,10 +224,9 @@
                     <input class="doodle-input" id="editor-tags" placeholder="经典, 惊悚">
                 </div>
             </div>
-            <label class="editor-share-row">
-                <input type="checkbox" id="editor-share">
-                <span>共享到公开汤池（所有人可选用这锅汤）</span>
-            </label>
+            <div class="editor-share-row">
+                <span>保存后为私有，可在「我的汤面」中点「公开」发布到公开汤池（公开后不可编辑，但可删除）</span>
+            </div>
             <div class="setting-actions">
                 <button class="doodle-btn" id="btn-editor-cancel">取消</button>
                 <button class="doodle-btn" id="btn-editor-save"
@@ -272,6 +270,8 @@
         <a href="https://icp.gov.moe/?keyword=20269944" target="_blank">萌ICP备20269944号</a>
         <a href="https://fakeicp.top/query.html?number=1202612" target="_blank">假ICP备1202612号</a>
         <br>
+        <a href="/agreement">用户协议</a>
+        <a href="/privacy">隐私政策</a><br>
         本项目基于 AGPL 协议开源，欢迎部署或学习：<a href="https://github.com/XiaoFeng-QWQ/TuringTalk" target="_blank" rel="noopener"
             style="color:var(--ink-blue);text-decoration:underline;">github.com/XiaoFeng-QWQ/TuringTalk</a>
     </div>

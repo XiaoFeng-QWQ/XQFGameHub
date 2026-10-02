@@ -99,6 +99,22 @@ class AsyncDbWriter
     }
 
     /**
+     * 推送海龟汤战绩写入任务
+     */
+    public static function pushSoupStats(string $playerId, bool $won, string $role): void
+    {
+        if (empty($playerId)) return;
+        self::push([
+            'type' => 'soup_stats',
+            'data' => [
+                'player_id' => $playerId,
+                'won'       => $won,
+                'role'      => $role,
+            ],
+        ]);
+    }
+
+    /**
      * 推送对手标签记录任务
      */
     public static function pushTag(string $playerId, string $tag): void
@@ -175,6 +191,10 @@ class AsyncDbWriter
                 self::processGomokuStats($task['data']);
                 break;
 
+            case 'soup_stats':
+                self::processSoupStats($task['data']);
+                break;
+
             case 'tag':
                 PlayerStatsRepository::recordTag($task['data']['player_id'], $task['data']['tag']);
                 break;
@@ -204,6 +224,15 @@ class AsyncDbWriter
             (bool)$data['win'],
             (bool)$data['draw'],
             (int)($data['active_hour'] ?? 0)
+        );
+    }
+
+    private static function processSoupStats(array $data): void
+    {
+        PlayerStatsRepository::recordSoupGame(
+            (string)$data['player_id'],
+            (bool)($data['won'] ?? false),
+            (string)($data['role'] ?? 'guesser')
         );
     }
 

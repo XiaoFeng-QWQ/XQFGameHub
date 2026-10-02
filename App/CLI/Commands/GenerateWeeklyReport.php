@@ -41,7 +41,7 @@ class GenerateWeeklyReport extends Command
 
             // ── 查询所有玩家 ──
             $stmt = $mysql->query(
-                'SELECT id, nickname, discriminator, turing_test, gomoku,
+                'SELECT id, nickname, discriminator, turing_test, gomoku, soup,
                         created_at, last_played_at
                  FROM player_data
                  ORDER BY last_played_at DESC'
@@ -136,7 +136,8 @@ class GenerateWeeklyReport extends Command
                 avg_games_per_player REAL NOT NULL DEFAULT 0,
                 avg_win_rate    REAL NOT NULL DEFAULT 0,
                 turing_games    INTEGER NOT NULL DEFAULT 0,
-                gomoku_games    INTEGER NOT NULL DEFAULT 0
+                gomoku_games    INTEGER NOT NULL DEFAULT 0,
+                soup_games      INTEGER NOT NULL DEFAULT 0
             )
         ');
 
@@ -166,12 +167,31 @@ class GenerateWeeklyReport extends Command
                 gomoku_losses    INTEGER NOT NULL DEFAULT 0,
                 gomoku_draws     INTEGER NOT NULL DEFAULT 0,
                 gomoku_win_rate  REAL NOT NULL DEFAULT 0,
+                soup_games       INTEGER NOT NULL DEFAULT 0,
+                soup_wins        INTEGER NOT NULL DEFAULT 0,
+                soup_losses      INTEGER NOT NULL DEFAULT 0,
+                soup_win_rate    REAL NOT NULL DEFAULT 0,
+                soup_host_games  INTEGER NOT NULL DEFAULT 0,
+                soup_guesser_games INTEGER NOT NULL DEFAULT 0,
                 peak_hours       TEXT NOT NULL DEFAULT \'[]\',
                 created_at       INTEGER NOT NULL DEFAULT 0,
                 last_played_at   INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (week) REFERENCES weekly_reports(week)
             )
         ');
+
+        // 兼容存量 SQLite 库：补海龟汤相关列（CREATE TABLE IF NOT EXISTS 不会更新已有表）
+        $this->ensureColumn($db, 'weekly_reports', 'soup_games', 'INTEGER NOT NULL DEFAULT 0');
+        foreach ([
+            'soup_games'         => 'INTEGER NOT NULL DEFAULT 0',
+            'soup_wins'          => 'INTEGER NOT NULL DEFAULT 0',
+            'soup_losses'        => 'INTEGER NOT NULL DEFAULT 0',
+            'soup_win_rate'      => 'REAL NOT NULL DEFAULT 0',
+            'soup_host_games'    => 'INTEGER NOT NULL DEFAULT 0',
+            'soup_guesser_games' => 'INTEGER NOT NULL DEFAULT 0',
+        ] as $col => $def) {
+            $this->ensureColumn($db, 'weekly_player_stats', $col, $def);
+        }
 
         // 复合索引：覆盖常用分页排序查询
         $db->exec('CREATE INDEX IF NOT EXISTS idx_wps_week ON weekly_player_stats(week)');
@@ -182,6 +202,23 @@ class GenerateWeeklyReport extends Command
         $db->exec('CREATE INDEX IF NOT EXISTS idx_wps_guess ON weekly_player_stats(week, turing_guess_accuracy DESC)');
         $db->exec('CREATE INDEX IF NOT EXISTS idx_wps_streak ON weekly_player_stats(week, turing_best_streak DESC)');
         $db->exec('CREATE INDEX IF NOT EXISTS idx_wps_gomoku ON weekly_player_stats(week, gomoku_games DESC)');
+        $db->exec('CREATE INDEX IF NOT EXISTS idx_wps_soup ON weekly_player_stats(week, soup_games DESC)');
+    }
+
+    /**
+     * 为存量 SQLite 表补齐列（幂等）
+     */
+    private function ensureColumn(PDO $db, string $table, string $column, string $definition): void
+    {
+        try {
+            $cols = $db->query("PRAGMA table_info({$table})")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($cols as $col) {
+                if (($col['name'] ?? '') === $column) return;
+            }
+            $db->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
+        } catch (\Throwable $e) {
+            echo "补列失败 {$table}.{$column}: " . $e->getMessage() . "\n";
+        }
     }
 
     private function upsertReport(PDO $db, string $week, array $overview, int $totalPlayers, int $activePlayers): void
@@ -192,13 +229,13 @@ class GenerateWeeklyReport extends Command
                 total_players, active_players,
                 total_games, total_wins,
                 avg_games_per_player, avg_win_rate,
-                turing_games, gomoku_games
+                turing_games, gomoku_games, soup_games
             ) VALUES (
                 :w, :ga, :ps, :pe,
                 :tp, :ap,
                 :tg, :tw,
                 :agpp, :awr,
-                :tug, :gog
+                :tug, :gog, :sog
             ) ON CONFLICT(week) DO UPDATE SET
                 generated_at=excluded.generated_at,
                 period_start=excluded.period_start,
@@ -210,7 +247,8 @@ class GenerateWeeklyReport extends Command
                 avg_games_per_player=excluded.avg_games_per_player,
                 avg_win_rate=excluded.avg_win_rate,
                 turing_games=excluded.turing_games,
-                gomoku_games=excluded.gomoku_games
+                gomoku_games=excluded.gomoku_games,
+                soup_games=excluded.soup_games
         ');
 
         $stmt->execute([
@@ -226,6 +264,7 @@ class GenerateWeeklyReport extends Command
             ':awr'  => $overview['avg_win_rate'],
             ':tug'  => $overview['turing_games'],
             ':gog'  => $overview['gomoku_games'],
+            ':sog'  => $overview['soup_games'],
         ]);
     }
 
@@ -242,6 +281,8 @@ class GenerateWeeklyReport extends Command
                 turing_win_rate, turing_guess_accuracy, turing_avg_msgs,
                 turing_best_streak, turing_current_streak,
                 gomoku_games, gomoku_wins, gomoku_losses, gomoku_draws, gomoku_win_rate,
+                soup_games, soup_wins, soup_losses, soup_win_rate,
+                soup_host_games, soup_guesser_games,
                 peak_hours, created_at, last_played_at
             ) VALUES (
                 :week, :pid, :nick, :disc,
@@ -250,6 +291,8 @@ class GenerateWeeklyReport extends Command
                 :tuwr, :tuga, :tuam,
                 :tubs, :tucs,
                 :gog, :gow, :gol, :god, :gowr,
+                :sog, :sow, :sol, :sowr,
+                :sohg, :sogg,
                 :ph, :ca, :lpa
             )
         ');
@@ -279,6 +322,12 @@ class GenerateWeeklyReport extends Command
                 ':gol'  => $p['gomoku']['losses'],
                 ':god'  => $p['gomoku']['draws'],
                 ':gowr' => $p['gomoku']['win_rate'],
+                ':sog'  => $p['soup']['games'],
+                ':sow'  => $p['soup']['wins'],
+                ':sol'  => $p['soup']['losses'],
+                ':sowr' => $p['soup']['win_rate'],
+                ':sohg' => $p['soup']['host_games'],
+                ':sogg' => $p['soup']['guesser_games'],
                 ':ph'   => json_encode($p['peak_hours']),
                 ':ca'   => $p['created_at'],
                 ':lpa'  => $p['last_played_at'],
@@ -296,10 +345,11 @@ class GenerateWeeklyReport extends Command
     {
         $turing  = $this->unserializeStats($row['turing_test'], 'turing_test');
         $gomoku  = $this->unserializeStats($row['gomoku'], 'gomoku');
+        $soup    = $this->unserializeStats($row['soup'] ?? null, 'soup');
 
-        $totalGames = $turing['total_games'] + $gomoku['total_games'];
-        $totalWins  = $turing['wins'] + $gomoku['wins'];
-        $totalLosses = $turing['losses'] + $gomoku['losses'];
+        $totalGames = $turing['total_games'] + $gomoku['total_games'] + $soup['total_games'];
+        $totalWins  = $turing['wins'] + $gomoku['wins'] + $soup['wins'];
+        $totalLosses = $turing['losses'] + $gomoku['losses'] + $soup['losses'];
 
         return [
             'id'             => $row['id'],
@@ -330,6 +380,14 @@ class GenerateWeeklyReport extends Command
                 'draws'    => $gomoku['draws'],
                 'win_rate' => $gomoku['total_games'] > 0 ? round(($gomoku['wins'] / $gomoku['total_games']) * 100, 1) : 0,
             ],
+            'soup' => [
+                'games'         => $soup['total_games'],
+                'wins'          => $soup['wins'],
+                'losses'        => $soup['losses'],
+                'win_rate'      => $soup['total_games'] > 0 ? round(($soup['wins'] / $soup['total_games']) * 100, 1) : 0,
+                'host_games'    => $soup['as_host'],
+                'guesser_games' => $soup['as_guesser'],
+            ],
             'peak_hours' => $this->getPeakHours(
                 ($turing['active_hours'] ?? []),
                 ($gomoku['active_hours'] ?? [])
@@ -349,6 +407,10 @@ class GenerateWeeklyReport extends Command
             'gomoku' => [
                 'total_games' => 0, 'wins' => 0, 'losses' => 0, 'draws' => 0,
                 'active_hours' => [],
+            ],
+            'soup' => [
+                'total_games' => 0, 'wins' => 0, 'losses' => 0,
+                'as_host' => 0, 'as_guesser' => 0,
             ],
             default => ['total_games' => 0, 'wins' => 0, 'losses' => 0],
         };
@@ -387,13 +449,14 @@ class GenerateWeeklyReport extends Command
             return [
                 'total_players' => 0, 'total_games' => 0, 'total_wins' => 0,
                 'avg_games_per_player' => 0, 'avg_win_rate' => 0,
-                'turing_games' => 0, 'gomoku_games' => 0,
+                'turing_games' => 0, 'gomoku_games' => 0, 'soup_games' => 0,
             ];
         }
 
         $sum = fn(string $key) => array_sum(array_column($players, $key));
         $sumTuring  = fn(string $key) => array_sum(array_column(array_column($players, 'turing'), $key));
         $sumGomoku  = fn(string $key) => array_sum(array_column(array_column($players, 'gomoku'), $key));
+        $sumSoup    = fn(string $key) => array_sum(array_column(array_column($players, 'soup'), $key));
 
         return [
             'total_players'        => $totalPlayers,
@@ -403,6 +466,7 @@ class GenerateWeeklyReport extends Command
             'avg_win_rate'         => round(array_sum(array_column($players, 'win_rate')) / $totalPlayers, 1),
             'turing_games'         => $sumTuring('games'),
             'gomoku_games'         => $sumGomoku('games'),
+            'soup_games'           => $sumSoup('games'),
         ];
     }
 

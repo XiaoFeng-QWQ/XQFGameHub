@@ -1,6 +1,67 @@
-/* ========== 周报页面 ========== */
-.report-content {
-    padding-top: 30px;
+/* ============================================================
+   周报页面
+   ------------------------------------------------------------
+   版式与「首页 / 我的账号」对齐：
+   居中定宽页容器 + 页头（# 眉标 + 标题）+ 便签底分区面板，
+   分区标题复用 hub.css 的 .hub-section-head / .hub-section-title。
+   全部取 style.css 变量，暗色 / 活动主题自动适配。
+   ============================================================ */
+
+#report-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 760px;
+    gap: 26px;
+}
+
+/* ---------- 页头（层级锚点，与账号页一致） ---------- */
+.report-pagehead {
+    width: 100%;
+    text-align: center;
+}
+
+.report-eyebrow {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--ink-blue);
+    margin-bottom: 8px;
+}
+
+#report-page .report-pagehead .hero-title {
+    font-size: 30px;
+    margin-bottom: 6px;
+}
+
+#report-page .report-pagehead .hero-subtitle {
+    min-height: 20px;
+}
+
+/* ---------- 分区面板（沿用站内面板配方） ---------- */
+#report-content {
+    width: 100%;
+}
+
+.report-panel {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 22px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 20px 6px 20px 6px / 6px 20px 6px 20px;
+    box-shadow: 4px 6px 0 var(--shadow-md);
+}
+
+.report-panel--yellow {
+    background: var(--note-yellow);
+}
+
+.report-panel + .report-panel {
+    margin-top: 26px;
 }
 
 .report-loading {
@@ -32,8 +93,8 @@
 .week-picker-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
-    margin-bottom: 25px;
 }
 .week-label {
     font-weight: 600;
@@ -55,16 +116,16 @@
 /* ---- 总览卡片 ---- */
 .overview-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 16px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
 }
 .overview-card {
+    background: var(--surface-white);
     border: 2px solid var(--ink-black);
     border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-    padding: 18px 20px;
+    padding: 14px 16px;
     text-align: center;
-    box-shadow: 3px 4px 0px var(--shadow-md);
+    box-shadow: 3px 4px 0 var(--shadow-md);
 }
 .overview-card .oc-value {
     font-size: 28px;
@@ -78,41 +139,41 @@
     margin-top: 4px;
 }
 
-/* ---- 排序标签 ---- */
+/* ---- 排序标签（同 .hub-filter / .acc-sticker-tab 配方） ---- */
 .sort-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 20px;
 }
 .sort-tab {
-    padding: 7px 16px;
-    border: 2px dashed var(--border-light);
-    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-    background: transparent;
-    color: var(--text-secondary);
+    padding: 6px 14px;
+    border: 2px solid var(--ink-black);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    background: var(--surface-white);
+    color: var(--ink-black);
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 .sort-tab:hover {
-    border-style: solid;
-    color: var(--ink-black);
+    transform: translateY(-1px);
 }
 .sort-tab.active {
-    border-style: solid;
-    border-color: var(--ink-black);
     background: var(--note-yellow);
-    color: var(--ink-black);
+    box-shadow: 2px 2px 0 var(--shadow-md);
     font-weight: 600;
+    transform: none;
 }
 
-/* ---- 玩家列表 ---- */
+/* ---- 玩家列表（连票条：描边容器 + 虚线分隔） ---- */
 .player-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 14px 4px 14px 4px / 4px 14px 4px 14px;
+    overflow: hidden;
 }
 .player-row {
     display: grid;
@@ -120,18 +181,13 @@
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
-    border: 2px solid transparent;
-    border-radius: 8px;
     background: var(--surface-white);
     transition: background 0.15s;
 }
+.player-row + .player-row {
+    border-top: 2px dashed var(--border-light);
+}
 .player-row:hover {
-    background: var(--note-yellow);
-}
-.player-row:nth-child(odd) {
-    background: var(--paper-bg);
-}
-.player-row:nth-child(odd):hover {
     background: var(--note-yellow);
 }
 
@@ -203,6 +259,13 @@
     min-width: 36px;
     padding: 6px 12px;
 }
+.pagination button.active {
+    background: var(--note-yellow);
+    color: var(--ink-black);
+    box-shadow: 2px 2px 0 var(--shadow-md);
+    font-weight: 700;
+    transform: none;
+}
 .pagination .page-info {
     color: var(--text-secondary);
     font-size: 13px;
@@ -235,6 +298,21 @@
     .player-detail {
         font-size: 11px;
         gap: 4px;
+    }
+}
+
+@media (max-width: 620px) {
+    #report-page {
+        gap: 20px;
+    }
+    #report-page .report-pagehead .hero-title {
+        font-size: 26px;
+    }
+    .report-panel {
+        padding: 18px 16px;
+    }
+    .report-panel + .report-panel {
+        margin-top: 20px;
     }
 }
 

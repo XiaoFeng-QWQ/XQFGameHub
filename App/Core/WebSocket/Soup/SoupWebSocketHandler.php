@@ -9,6 +9,7 @@ use App\Controllers\GameController;
 use App\Core\Sanitizer;
 use App\Core\WebSocket\BaseGameHandler;
 use App\Services\Game\GameService;
+use App\Services\Infrastructure\AsyncDbWriter;
 use App\Services\Infrastructure\Logger;
 use App\Services\Infrastructure\RedisService;
 use App\Services\Repository\BanRepository;
@@ -699,8 +700,9 @@ class SoupWebSocketHandler extends BaseGameHandler
             $won = ($winnerFd === null)
                 ? ($role === 'host')
                 : ((int)$m['fd'] === $winnerFd);
+            $playerId = (string)($m['playerId'] ?? '');
             SoupRecordRepository::save(
-                (string)($m['playerId'] ?? ''),
+                $playerId,
                 (string)$room['id'],
                 $puzzleId,
                 $role,
@@ -709,6 +711,8 @@ class SoupWebSocketHandler extends BaseGameHandler
                 $hintsUsed,
                 $duration
             );
+            // 同步累计到玩家游玩记录（player_data.soup），异步落库
+            AsyncDbWriter::pushSoupStats($playerId, $won, $role);
         }
 
         // 公布命中的猜题人

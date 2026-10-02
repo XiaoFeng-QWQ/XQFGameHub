@@ -292,81 +292,17 @@ main {
     caret-color: var(--ink-black);
 }
 
-.agreement-line {
+.card-foot-line {
     margin: 10px 0 6px;
     font-size: 12px;
     color: var(--text-secondary, #666);
     text-align: center;
 }
 
-.agreement-line a {
+.card-foot-line a {
     color: var(--ink-blue);
     text-decoration: underline;
     text-underline-offset: 3px;
-}
-
-#agreement-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: var(--overlay-bg);
-    backdrop-filter: blur(2px);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 110;
-}
-
-.agreement-drawer {
-    position: relative;
-    width: min(440px, 90vw);
-    max-height: 85vh;
-    background: var(--bg-clipboard);
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: -5px 10px 20px var(--shadow-lg);
-    animation: swingIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-.agreement-drawer::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 25px;
-    background: silver;
-    border: 2px solid #555;
-    border-radius: 5px;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
-    z-index: 2;
-}
-
-.agreement-drawer .paper-content {
-    height: auto;
-    max-height: calc(85vh - 30px);
-}
-
-.agreement-body {
-    font-size: 13px;
-    line-height: 1.8;
-    color: var(--text-secondary, #555);
-    margin: 16px 0;
-}
-
-.agreement-body p {
-    margin: 0 0 12px;
-}
-
-.agreement-body p:last-child {
-    margin: 0;
-}
-
-.agreement-body strong {
-    color: var(--ink-black);
 }
 
 .start-btn {
@@ -732,11 +668,8 @@ main {
     border-color: #f44336;
 }
 
-#settings-overlay,
-#changelog-overlay,
 #chat-history-detail-overlay,
 #admin-panel-overlay,
-#sticker-manager-overlay,
 #comment-overlay,
 #bot-apply-overlay,
 #fate-test-overlay,
@@ -872,42 +805,6 @@ main {
     background: transparent;
     font-size: 15px;
     outline: none;
-}
-
-.hand-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-}
-
-.box {
-    width: 22px;
-    height: 22px;
-    border: 2px solid var(--ink-black);
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.box .check-icon {
-    display: none;
-    stroke: var(--ink-blue);
-}
-
-.hand-checkbox.active .box .check-icon {
-    display: block;
-}
-
-.tip-jar {
-    background: var(--note-green);
-    padding: 15px;
-    border: 2px solid var(--ink-black);
-    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-    margin-top: 35px;
-    text-align: center;
-    transform: rotate(2deg);
 }
 
 #result-area {
@@ -1535,41 +1432,6 @@ main {
     .clipboard-drawer {
         width: 98%;
     }
-
-    #settings-overlay .clipboard-drawer {
-        width: calc(100vw - 10px);
-        right: 5px;
-    }
-}
-
-
-.changelog-list {
-    padding-top: 5px;
-}
-
-.changelog-version {
-    margin-bottom: 20px;
-}
-
-.changelog-ver-header {
-    font-size: 15px;
-    font-weight: bold;
-    color: var(--ink-blue);
-    border-bottom: 1px dashed var(--ink-blue);
-    padding-bottom: 6px;
-    margin-bottom: 8px;
-}
-
-.changelog-version ul {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 13px;
-    line-height: 1.8;
-    color: #444;
-}
-
-.changelog-version li::marker {
-    color: var(--ink-blue);
 }
 
 

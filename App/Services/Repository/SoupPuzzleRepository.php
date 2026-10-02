@@ -32,6 +32,7 @@ class SoupPuzzleRepository
                 owner_id    VARCHAR(64) NOT NULL DEFAULT "" COMMENT "玩家 player_data.id；官方题为空",
                 source      VARCHAR(16) NOT NULL DEFAULT "member" COMMENT "official / member",
                 scope       VARCHAR(16) NOT NULL DEFAULT "private" COMMENT "private / public",
+                origin_author_id VARCHAR(64) NOT NULL DEFAULT "" COMMENT "衍生作品的原始作者ID；official=官方；空=本人原创",
                 title       VARCHAR(100) NOT NULL DEFAULT "" COMMENT "标题",
                 surface     TEXT NOT NULL COMMENT "汤面（谜面）",
                 truth       TEXT NOT NULL COMMENT "汤底（真相），仅服务端/出题人可见",
@@ -49,6 +50,9 @@ class SoupPuzzleRepository
                 INDEX idx_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             COMMENT="海龟汤汤面库"');
+
+            // 兼容存量表：补衍生作品原始作者列
+            Database::ensureColumn($pdo, 'soup_puzzles', 'origin_author_id', 'VARCHAR(64) NOT NULL DEFAULT "" COMMENT "衍生作品的原始作者ID；official=官方；空=本人原创"');
         } catch (\Throwable $e) {
             Logger::error('SoupPuzzleRepository: ensureTable failed', ['error' => $e->getMessage()]);
         }
@@ -111,13 +115,14 @@ class SoupPuzzleRepository
             $pdo = Database::connect();
             $stmt = $pdo->prepare(
                 'INSERT INTO soup_puzzles
-                    (owner_id, source, scope, title, surface, truth, key_points, hints, difficulty, tags, status)
-                 VALUES (?, "member", ?, ?, ?, ?, ?, ?, ?, ?, "active")'
+                    (owner_id, source, scope, origin_author_id, title, surface, truth, key_points, hints, difficulty, tags, status)
+                 VALUES (?, "member", ?, ?, ?, ?, ?, ?, ?, ?, ?, "active")'
             );
             $scope = in_array($data['scope'] ?? '', self::SCOPE_ALLOWED, true) ? $data['scope'] : 'private';
             $stmt->execute([
                 mb_substr($ownerId, 0, 64),
                 $scope,
+                mb_substr((string)($data['origin_author_id'] ?? ''), 0, 64),
                 mb_substr((string)($data['title'] ?? ''), 0, 100),
                 (string)($data['surface'] ?? ''),
                 (string)($data['truth'] ?? ''),
@@ -144,7 +149,7 @@ class SoupPuzzleRepository
             $stmt = $pdo->prepare(
                 'UPDATE soup_puzzles SET
                     title = ?, surface = ?, truth = ?, key_points = ?, hints = ?, difficulty = ?, tags = ?, scope = ?
-                 WHERE id = ? AND owner_id = ? AND source = "member" AND status = "active"'
+                 WHERE id = ? AND owner_id = ? AND source = "member" AND status = "active" AND scope = "private"'
             );
             $scope = in_array($data['scope'] ?? '', self::SCOPE_ALLOWED, true) ? $data['scope'] : 'private';
             $stmt->execute([
@@ -174,6 +179,7 @@ class SoupPuzzleRepository
         if ($id <= 0 || $ownerId === '') return false;
         try {
             $pdo = Database::connect();
+            // 公开汤面可删除（删除即终态）：删除只移除原汤，已复制出去的衍生汤不受影响
             $stmt = $pdo->prepare('DELETE FROM soup_puzzles WHERE id = ? AND owner_id = ? AND source = "member"');
             $stmt->execute([$id, mb_substr($ownerId, 0, 64)]);
             return $stmt->rowCount() > 0;

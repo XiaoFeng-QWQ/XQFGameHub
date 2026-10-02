@@ -21,6 +21,7 @@
         { key: 'turing_guess_accuracy', label: '猜对率',  minGames: 5 },
         { key: 'turing_best_streak',  label: '连胜',     minGames: 0 },
         { key: 'gomoku_games',        label: '五子棋',   minGames: 0 },
+        { key: 'soup_games',          label: '海龟汤',   minGames: 0 },
     ];
 
     let currentSort  = 'total_games';
@@ -124,6 +125,7 @@
             { value: overview.avg_win_rate + '%' || '0%', label: '平均胜率' },
             { value: overview.turing_games || 0, label: '图灵测试' },
             { value: overview.gomoku_games || 0, label: '五子棋' },
+            { value: overview.soup_games || 0, label: '海龟汤' },
         ];
         $overview.innerHTML = cards.map(c =>
             `<div class="overview-card"><div class="oc-value">${c.value}</div><div class="oc-label">${c.label}</div></div>`

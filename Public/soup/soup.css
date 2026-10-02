@@ -619,11 +619,17 @@
 .puzzle-toolbar {
     display: flex;
     gap: 8px;
+    row-gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .puzzle-toolbar .doodle-input {
     width: auto;
+}
+
+.puzzle-source-tabs {
+    margin: 0;
 }
 
 .puzzle-grid {
@@ -682,6 +688,44 @@
     background: var(--note-green);
     color: var(--success);
     border-color: var(--success);
+}
+
+.scope-chip.official {
+    background: var(--note-blue);
+    color: var(--ink-blue);
+    border-color: var(--ink-blue);
+}
+
+.puzzle-card .pc-author {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* 公开池：汤底对所有人可见 */
+.puzzle-card .pc-truth {
+    border: 1.5px dashed var(--border-light);
+    border-radius: 8px 4px 10px 5px;
+    background: var(--note-yellow, var(--surface-white));
+    padding: 8px 10px;
+}
+
+.puzzle-card .pc-truth-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.puzzle-card .pc-truth-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+}
+
+/* 已公开：不可编辑 / 删除 / 撤回 */
+.puzzle-card .public-locked {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px 0;
 }
 
 .puzzle-card .pc-actions {

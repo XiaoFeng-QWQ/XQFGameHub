@@ -4,6 +4,7 @@ namespace App\Services\Soup;
 
 use App\Config\Config;
 use App\Core\Sanitizer;
+use App\Services\Repository\PlayerStatsRepository;
 use App\Services\Repository\SoupPuzzleRepository;
 
 /**
@@ -30,9 +31,11 @@ class SoupPuzzleService
 
     /**
      * 新建汤面
+     *
+     * @param string $originAuthorId 仅由复制流程内部传入，标记衍生作品的原始作者；不接受客户端输入
      * @return array{success: bool, error?: string, id?: int}
      */
-    public function create(string $ownerId, array $data): array
+    public function create(string $ownerId, array $data, string $originAuthorId = ''): array
     {
         if ($ownerId === '') return ['success' => false, 'error' => '身份验证失败'];
 
@@ -43,6 +46,9 @@ class SoupPuzzleService
 
         $clean = $this->validate($data);
         if ($clean === null) return ['success' => false, 'error' => '汤面和汤底均不能为空'];
+
+        $originAuthorId = mb_substr(trim($originAuthorId), 0, 64);
+        if ($originAuthorId !== '') $clean['origin_author_id'] = $originAuthorId;
 
         $id = SoupPuzzleRepository::create($ownerId, $clean);
         if ($id === null) return ['success' => false, 'error' => '保存失败，请稍后再试'];
@@ -56,6 +62,11 @@ class SoupPuzzleService
     public function update(string $ownerId, int $id, array $data): array
     {
         if ($ownerId === '' || $id <= 0) return ['success' => false, 'error' => '参数不完整'];
+
+        $puzzle = $this->findOwned($ownerId, $id);
+        if ($puzzle === null) return ['success' => false, 'error' => '汤面不存在或无权编辑'];
+        if (!$this->isPrivate($puzzle)) return ['success' => false, 'error' => '已公开的汤面不可编辑'];
+
         $clean = $this->validate($data);
         if ($clean === null) return ['success' => false, 'error' => '汤面和汤底均不能为空'];
 
@@ -67,10 +78,16 @@ class SoupPuzzleService
 
     /**
      * 删除汤面（仅本人）
+     *
+     * 公开汤面同样可删除（删除即终态）：仅移除原汤，已复制出去的衍生汤不受影响。
      */
     public function delete(string $ownerId, int $id): array
     {
         if ($ownerId === '' || $id <= 0) return ['success' => false, 'error' => '参数不完整'];
+
+        $puzzle = $this->findOwned($ownerId, $id);
+        if ($puzzle === null) return ['success' => false, 'error' => '汤面不存在或无权删除'];
+
         if (!SoupPuzzleRepository::delete($id, $ownerId)) {
             return ['success' => false, 'error' => '汤面不存在或无权删除'];
         }
@@ -78,19 +95,20 @@ class SoupPuzzleService
     }
 
     /**
-     * 切换共享（公开/私有），仅本人
+     * 公开汤面（仅本人，单向不可逆）
+     *
+     * 公开后汤底对所有用户可见、退出可游玩池、不可编辑、不可转回私有；但可删除（删除即终态，仅移除原汤）。
      * @return array{success: bool, scope?: string, error?: string}
      */
-    public function toggleShare(string $ownerId, int $id): array
+    public function publish(string $ownerId, int $id): array
     {
         if ($ownerId === '' || $id <= 0) return ['success' => false, 'error' => '参数不完整'];
 
-        $puzzle = SoupPuzzleRepository::findById($id);
-        if (!$puzzle || (string)$puzzle['owner_id'] !== $ownerId || (string)$puzzle['source'] !== 'member') {
-            return ['success' => false, 'error' => '汤面不存在或无权操作'];
-        }
-        $newScope = ($puzzle['scope'] ?? 'private') === 'public' ? 'private' : 'public';
-        $result = SoupPuzzleRepository::setScope($id, $ownerId, $newScope);
+        $puzzle = $this->findOwned($ownerId, $id);
+        if ($puzzle === null) return ['success' => false, 'error' => '汤面不存在或无权操作'];
+        if (!$this->isPrivate($puzzle)) return ['success' => false, 'error' => '该汤面已公开，且不可撤回'];
+
+        $result = SoupPuzzleRepository::setScope($id, $ownerId, 'public');
         if ($result === null) return ['success' => false, 'error' => '操作失败，请稍后再试'];
         return ['success' => true, 'scope' => $result];
     }
@@ -98,12 +116,77 @@ class SoupPuzzleService
     // ==================== 公开汤池 ====================
 
     /**
-     * 公开汤池（官方 + 玩家公开），对猜题人隐藏汤底
+     * 公开汤池（官方 + 玩家公开）：公开即作品，汤底对所有用户可见，并附带原作者信息
      */
     public function listPublic(): array
     {
         $rows = SoupPuzzleRepository::listPublic();
-        return array_map([$this, 'toPublicView'], $rows);
+
+        // 需要解析昵称的用户：原创作者 + 衍生作品指向的原始作者（official 哨兵值除外）
+        $authorIds = [];
+        foreach ($rows as $row) {
+            $ownerId = (string)($row['owner_id'] ?? '');
+            if ((string)($row['source'] ?? '') === 'member' && $ownerId !== '') {
+                $authorIds[] = $ownerId;
+            }
+            $originId = (string)($row['origin_author_id'] ?? '');
+            if ($originId !== '' && $originId !== 'official') {
+                $authorIds[] = $originId;
+            }
+        }
+        $nicknames = PlayerStatsRepository::findNicknamesByIds($authorIds);
+
+        return array_map(
+            fn(array $row) => $this->toPublicView($row, $nicknames),
+            $rows
+        );
+    }
+
+    /**
+     * 复制公开汤池 / 官方题库中的汤面到「我的汤面」（含汤底，复制后转为私有）
+     * @return array{success: bool, id?: int, error?: string}
+     */
+    public function copyPublic(string $ownerId, int $id): array
+    {
+        if ($ownerId === '' || $id <= 0) return ['success' => false, 'error' => '参数不完整'];
+
+        $src = SoupPuzzleRepository::findById($id);
+        if (!$src || (string)$src['status'] !== 'active') {
+            return ['success' => false, 'error' => '汤面不存在或已下架'];
+        }
+
+        $isOfficial    = (string)$src['source'] === 'official';
+        $isPublicEntry = $isOfficial
+            || ((string)$src['source'] === 'member' && (string)$src['scope'] === 'public');
+        if (!$isPublicEntry) return ['success' => false, 'error' => '该汤面不在公开汤池中'];
+        if (!$isOfficial && (string)$src['owner_id'] === $ownerId) {
+            return ['success' => false, 'error' => '这是你自己的汤面，无需复制'];
+        }
+
+        // 衍生作品记录最初的原始作者：复制品再被复制也沿用同一个 origin，署名不因中间环节而漂移
+        $srcOrigin = (string)($src['origin_author_id'] ?? '');
+        if ($isOfficial) {
+            $originAuthorId = 'official';
+        } elseif ($srcOrigin !== '') {
+            $originAuthorId = $srcOrigin;
+        } else {
+            $originAuthorId = (string)$src['owner_id'];
+        }
+
+        // 复用 create 的配额校验与字段清洗；新建汤面一律私有，公开需另行确认发布
+        $result = $this->create($ownerId, [
+            'title'      => (string)$src['title'],
+            'surface'    => (string)$src['surface'],
+            'truth'      => (string)$src['truth'],
+            'key_points' => (array)$src['key_points'],
+            'hints'      => (array)$src['hints'],
+            'difficulty' => (int)$src['difficulty'],
+            'tags'       => (string)$src['tags'],
+        ], $originAuthorId);
+        if (empty($result['success'])) {
+            return ['success' => false, 'error' => $result['error'] ?? '复制失败'];
+        }
+        return ['success' => true, 'id' => $result['id']];
     }
 
     // ==================== 选题 ====================
@@ -140,6 +223,9 @@ class SoupPuzzleService
             case 'mine':
                 if ((string)$puzzle['owner_id'] !== $ownerId || (string)$puzzle['source'] !== 'member') {
                     return ['success' => false, 'error' => '只能选择自己的汤面'];
+                }
+                if (!$this->isPrivate($puzzle)) {
+                    return ['success' => false, 'error' => '已公开的汤面不可用于创建房间'];
                 }
                 break;
             case 'official':
@@ -181,10 +267,6 @@ class SoupPuzzleService
 
         $tags = Sanitizer::text((string)($data['tags'] ?? ''), 255);
         $difficulty = max(1, min(3, (int)($data['difficulty'] ?? 1)));
-        $isPublic = !empty($data['is_public']);
-        $scope = in_array($data['scope'] ?? '', ['private', 'public'], true)
-            ? $data['scope']
-            : ($isPublic ? 'public' : 'private');
 
         return [
             'title'      => $title,
@@ -199,19 +281,58 @@ class SoupPuzzleService
     }
 
     /**
-     * 公开视图裁剪：隐藏汤底与判定关键点
+     * 取本人名下的 member 汤面，不存在 / 非本人返回 null
      */
-    private function toPublicView(array $row): array
+    private function findOwned(string $ownerId, int $id): ?array
     {
+        $puzzle = SoupPuzzleRepository::findById($id);
+        if (!$puzzle || (string)$puzzle['owner_id'] !== $ownerId || (string)$puzzle['source'] !== 'member') {
+            return null;
+        }
+        return $puzzle;
+    }
+
+    /** 是否为私有（未公开）汤面 */
+    private function isPrivate(array $puzzle): bool
+    {
+        return (string)($puzzle['scope'] ?? 'private') !== 'public';
+    }
+
+    /**
+     * 公开视图：公开即作品，汤底一并展示，并附带原作者昵称
+     *
+     * @param array<string,string> $nicknames owner_id => nickname
+     */
+    private function toPublicView(array $row, array $nicknames = []): array
+    {
+        $isOfficial = (string)$row['source'] === 'official';
+        $ownerId  = (string)($row['owner_id'] ?? '');
+        $originId = (string)($row['origin_author_id'] ?? '');
+
+        // 衍生作品署名指向最初的原始作者；原创作品署名指向本人；官方题署名「官方」
+        $isDerivative = $originId !== '';
+        if ($originId === 'official') {
+            $author = '官方';
+        } elseif ($originId !== '') {
+            $author = $nicknames[$originId] ?? '已注销用户';
+        } elseif ($isOfficial || $ownerId === '') {
+            $author = '官方';
+        } else {
+            $author = $nicknames[$ownerId] ?? '已注销用户';
+        }
+
         return [
-            'id'         => (int)$row['id'],
-            'source'     => (string)$row['source'],
-            'scope'      => (string)$row['scope'],
-            'title'      => (string)$row['title'],
-            'surface'    => (string)$row['surface'],
-            'difficulty' => (int)$row['difficulty'],
-            'tags'       => (string)$row['tags'],
-            'used_count' => (int)$row['used_count'],
+            'id'            => (int)$row['id'],
+            'source'        => (string)$row['source'],
+            'scope'         => (string)$row['scope'],
+            'title'         => (string)$row['title'],
+            'surface'       => (string)$row['surface'],
+            'truth'         => (string)($row['truth'] ?? ''),
+            'author'        => $author,
+            'is_derivative' => $isDerivative,
+            'difficulty'    => (int)$row['difficulty'],
+            'tags'          => (string)$row['tags'],
+            'used_count'    => (int)$row['used_count'],
         ];
     }
 }

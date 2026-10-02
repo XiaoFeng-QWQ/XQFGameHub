@@ -781,6 +781,19 @@ class ChatHandler
         }
         $messageContent = Sanitizer::text((string)$rawContent, LobbyChatService::MAX_CONTENT_LEN);
 
+        // 表情 / 图片消息没有可读的文本 content：补上可读描述，
+        // 否则管理后台的「消息内容」会显示为「无」
+        $msgType = $msg['type'] ?? '';
+        if ($msgType === LobbyMessageType::STICKER->value) {
+            $stickerName = Sanitizer::text((string)($msg['sticker_name'] ?? ''), 32);
+            $stickerId   = Sanitizer::text((string)($msg['sticker_id'] ?? ''), 64);
+            $stickerUrl  = Sanitizer::text((string)($msg['sticker_url'] ?? ''), 500);
+            $label = $stickerName !== '' ? $stickerName : ($stickerId !== '' ? $stickerId : '未命名');
+            $messageContent = '[表情] ' . $label . ($stickerUrl !== '' ? ' ' . $stickerUrl : '');
+        } elseif ($msgType === LobbyMessageType::IMAGE->value && $messageContent !== '') {
+            $messageContent = '[图片] ' . $messageContent;
+        }
+
         // 从消息中获取被举报者的 player_id
         $targetPlayerId = $msg['sender_id'] ?? '';
 

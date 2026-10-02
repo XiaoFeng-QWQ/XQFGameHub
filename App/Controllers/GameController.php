@@ -46,6 +46,8 @@ class GameController
         '/soup/soup.css'           => ['soup/soup.css',           'text/css'],
         '/soup/soup.js'            => ['soup/soup.js',            'application/javascript'],
         '/soup/index.html'         => ['soup/index.html',         'text/html'],
+        '/agreement/index.html'    => ['agreement/index.html',    'text/html'],
+        '/privacy/index.html'      => ['privacy/index.html',      'text/html'],
         '/turing/index.html'       => ['turing/index.html',       'text/html'],
         '/hub.css'                 => ['hub.css',                 'text/css'],
         '/hub.js'                  => ['hub.js',                  'application/javascript'],
@@ -170,6 +172,31 @@ class GameController
             $html = str_replace(
                 $file . '?v=',
                 $file . '?v=' . $this->getFileVersionHash($file),
+                $html
+            );
+        }
+        $response->setContent($html);
+        $response->send();
+    }
+
+    public function agreementIndex(Request $request, Response $response): void
+    {
+        $this->renderLegalPage('agreement/index.html', $response);
+    }
+
+    public function privacyIndex(Request $request, Response $response): void
+    {
+        $this->renderLegalPage('privacy/index.html', $response);
+    }
+
+    /** 渲染协议类静态页并注入资源版本号 */
+    private function renderLegalPage(string $file, Response $response): void
+    {
+        $html = file_get_contents(self::PUBLIC_DIR . $file);
+        foreach (['/style.css', '/hub.css', '/shared.js'] as $asset) {
+            $html = str_replace(
+                $asset . '?v=',
+                $asset . '?v=' . $this->getFileVersionHash($asset),
                 $html
             );
         }
@@ -440,36 +467,6 @@ class GameController
         $response->send();
     }
 
-    // ==================== 聊天记录保存 ====================
-
-    /**
-     * POST /api/upload-userdata
-     * 上传本地 UserData 到服务端（设置页按钮触发）
-     */
-    public function uploadUserData(Request $request, Response $response): void
-    {
-        $body = $request->getJsonBody();
-        $response->setHeader('Content-Type', 'application/json');
-
-        $playerId = $this->requirePlayerId($request, $response);
-        if ($playerId === null) return;
-
-        $nickname = Sanitizer::text($body['nickname'] ?? '', 16);
-        $fp = Sanitizer::identifier($body['fp'] ?? '');
-        $ip = $request->getClientIp();
-        $stats = $body['stats'] ?? [];
-
-        if (!is_array($stats)) $stats = [];
-
-        try {
-            PlayerStatsRepository::syncUserData($playerId, $nickname, $ip, $fp, $stats);
-            $response->setContent(json_encode(['success' => true, 'message' => '数据上传成功'], JSON_UNESCAPED_UNICODE));
-        } catch (\Throwable $e) {
-            $response->setContent(json_encode(['error' => '上传失败: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE));
-        }
-        $response->send();
-    }
-
     // ==================== 聊天室自定义宏 ====================
 
     /**
@@ -590,7 +587,7 @@ class GameController
 
     /**
      * POST /api/soup/my-puzzles
-     * 新建汤面（surface, truth, key_points?, hints?, tags?, difficulty?, is_public）
+     * 新建汤面（surface, truth, key_points?, hints?, tags?, difficulty?），新建一律私有
      */
     public function soupPuzzleCreate(Request $request, Response $response): void
     {
@@ -653,7 +650,7 @@ class GameController
 
     /**
      * POST /api/soup/my-puzzles/{id}/share
-     * 切换共享（公开/私有）
+     * 公开汤面：单向不可逆，公开后汤底对所有用户可见、永久退出可游玩池
      */
     public function soupPuzzleShare(Request $request, Response $response): void
     {
@@ -662,7 +659,7 @@ class GameController
         if ($playerId === null) return;
 
         $service = new SoupPuzzleService();
-        $result = $service->toggleShare($playerId, $this->extractSoupPuzzleId($request->getPath()));
+        $result = $service->publish($playerId, $this->extractSoupPuzzleId($request->getPath()));
         if (empty($result['success'])) {
             $response->setContent(json_encode(['error' => $result['error'] ?? '操作失败'], JSON_UNESCAPED_UNICODE));
             $response->send();
@@ -689,11 +686,32 @@ class GameController
     }
 
     /**
-     * 从 /api/soup/my-puzzles/{id}[...] 路径中提取汤面 id
+     * POST /api/soup/public-puzzles/{id}/copy
+     * 复制公开汤池 / 官方题库中的汤面到我的汤面（含汤底，复制后转为私有）
+     */
+    public function soupPublicPuzzleCopy(Request $request, Response $response): void
+    {
+        $response->setHeader('Content-Type', 'application/json');
+        $playerId = $this->requirePlayerId($request, $response);
+        if ($playerId === null) return;
+
+        $service = new SoupPuzzleService();
+        $result = $service->copyPublic($playerId, $this->extractSoupPuzzleId($request->getPath()));
+        if (empty($result['success'])) {
+            $response->setContent(json_encode(['error' => $result['error'] ?? '复制失败'], JSON_UNESCAPED_UNICODE));
+            $response->send();
+            return;
+        }
+        $response->setContent(json_encode(['success' => true, 'id' => $result['id']], JSON_UNESCAPED_UNICODE));
+        $response->send();
+    }
+
+    /**
+     * 从 /api/soup/{my|public}-puzzles/{id}[...] 路径中提取汤面 id
      */
     private function extractSoupPuzzleId(string $path): int
     {
-        if (preg_match('#/api/soup/my-puzzles/(\d+)#', $path, $m)) {
+        if (preg_match('#/api/soup/(?:my|public)-puzzles/(\d+)#', $path, $m)) {
             return (int)$m[1];
         }
         return 0;
