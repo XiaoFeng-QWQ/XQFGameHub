@@ -3,7 +3,9 @@
    ------------------------------------------------------------
    设计语言与站内统一：2px 手绘描边 + 不规则圆角 + 错位实心阴影 +
    便签底色（note-*）+ 虚线分隔。
-   规整化：不使用旋转与胶带，改为「顶部总览 + 两栏管理面板」结构，
+   规整化：不使用旋转与胶带，采用「身份卡 + 分组面板」结构：
+   顶部身份卡占满整行，其下按功能分为「内容管理」「账号设置」两组，
+   每组由 .acc-group-head 标题引出，内部面板在桌面端两栏、移动端单列。
    分区标题复用 hub.css 的 .hub-section-head / .hub-section-title，
    大面板沿用站内弹窗配方，小数据卡沿用周报 .overview-card 配方。
    全部取 style.css 变量，暗色主题与活动主题自动适配。
@@ -26,23 +28,77 @@
     width: 100%;
 }
 
-/* ---------- 桌面端横向布局 ---------- */
+/* 未登录只有「创建账号 + 第三方登录」两块，限宽避免表单被拉得过长 */
+#account-guest {
+    max-width: 460px;
+}
+
+/* ---------- 功能分组：标题 + 面板网格 ---------- */
+
+.acc-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.acc-group-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 19px;
+    letter-spacing: 3px;
+    color: var(--ink-black);
+}
+
+.acc-group-title {
+    flex-shrink: 0;
+    font-weight: bold;
+}
+
+.acc-group-note {
+    min-width: 0;
+    font-size: 11px;
+    font-weight: normal;
+    letter-spacing: 0;
+    color: var(--text-subtle);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 标题后的虚线延伸，作为分组分隔 */
+.acc-group-head::after {
+    content: '';
+    flex: 1;
+    min-width: 20px;
+    border-top: 2px dashed var(--border-light);
+}
+
+/* 面板网格：移动端单列，桌面端两栏 */
+.acc-group-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+/* ---------- 桌面端：面板两栏 ---------- */
 
 @media (min-width: 900px) {
     #account-page {
         max-width: 1040px;
     }
 
-    /* 顶部身份总览占满整行，下方管理面板按两栏排列 */
     #account-main {
+        gap: 30px;
+    }
+
+    .acc-group-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         align-items: start;
         gap: 22px;
-    }
-
-    #account-main > .acc-panel:first-child {
-        grid-column: 1 / -1;
     }
 
     .acc-panel--hero {
@@ -658,6 +714,301 @@
     transform: scale(1.12) rotate(8deg);
 }
 
+/* ---------- ⑤ 聊天记录回顾 ---------- */
+
+.acc-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.acc-history-row {
+    padding: 9px 11px;
+    font-size: 13px;
+    background: var(--surface-white);
+    border: 2px solid var(--ink-black);
+    border-radius: 8px 3px 8px 3px;
+    box-shadow: 2px 3px 0 var(--shadow-sm);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.acc-history-row:hover {
+    transform: translateY(-1px);
+}
+
+.acc-history-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.acc-history-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.acc-history-badge {
+    font-size: 10px;
+    color: var(--ink-blue);
+    margin-left: 5px;
+}
+
+.acc-history-result {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.acc-history-result.is-win {
+    color: var(--success);
+}
+
+.acc-history-result.is-lose {
+    color: var(--danger);
+}
+
+.acc-history-result.is-draw {
+    color: var(--text-subtle);
+}
+
+.acc-history-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+
+.acc-pagination {
+    text-align: center;
+}
+
+.acc-pagination button {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 2px 9px;
+    margin: 0 2px;
+    color: var(--ink-black);
+    background: var(--surface-white);
+    border: 1.5px solid var(--ink-black);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.acc-pagination button.is-current {
+    font-weight: bold;
+    color: var(--surface-white);
+    background: var(--ink-blue);
+    border-color: var(--ink-blue);
+    cursor: default;
+}
+
+/* 空态 / 错误提示 */
+.acc-empty {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-subtle);
+    padding: 14px 10px;
+}
+
+.acc-empty.is-error {
+    color: var(--danger);
+}
+
+/* ---------- ⑥ 对手留言管理 ---------- */
+
+.acc-msg-allow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.acc-message-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.acc-msg-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    font-size: 12px;
+    border-bottom: 2px dashed var(--border-light);
+}
+
+.acc-msg-row:last-child {
+    border-bottom: none;
+}
+
+.acc-msg-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.acc-msg-from {
+    font-weight: bold;
+}
+
+.acc-msg-text.is-hidden {
+    text-decoration: line-through;
+    color: var(--text-aa);
+}
+
+.acc-msg-time {
+    color: var(--text-subtle);
+    margin-left: 4px;
+}
+
+.acc-msg-row .doodle-btn {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 2px 8px;
+}
+
+/* ---------- 聊天记录详情弹层 ---------- */
+
+.acc-chat-info {
+    font-size: 12px;
+    color: var(--text-subtle);
+    margin-bottom: 12px;
+}
+
+.acc-chat-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.acc-chat-result {
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--surface-white);
+    background: var(--ink-black);
+    border-radius: 4px;
+}
+
+.acc-collect-box {
+    padding: 12px;
+    background: var(--bg-input);
+    border: 1.5px dashed var(--ink-black);
+    border-radius: 8px;
+    margin-bottom: 14px;
+}
+
+.acc-collect-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--text-subtle);
+    margin-bottom: 8px;
+}
+
+.acc-collect-box #detail-title-input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ink-black);
+    background: var(--surface-white);
+    border: 1.5px solid var(--ink-black);
+    border-radius: 6px;
+    outline: none;
+}
+
+.acc-collect-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.acc-collect-box .acc-inline {
+    margin-bottom: 8px;
+}
+
+.acc-collect-box .acc-cta {
+    font-size: 12px;
+    padding: 6px 0;
+}
+
+.acc-collect-status {
+    display: none;
+    text-align: center;
+    font-size: 11px;
+    margin-top: 6px;
+}
+
+.acc-collect-status.is-success {
+    color: var(--success);
+}
+
+.acc-collect-status.is-error {
+    color: var(--danger);
+}
+
+.acc-chat-msgs {
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.acc-chat-msg {
+    display: flex;
+    margin-bottom: 8px;
+}
+
+.acc-chat-msg.is-right {
+    justify-content: flex-end;
+}
+
+.acc-chat-bubble {
+    max-width: 75%;
+    padding: 8px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    border: 1.5px solid var(--ink-black);
+}
+
+.acc-chat-msg.is-left .acc-chat-bubble {
+    background: var(--note-yellow);
+    border-radius: 12px 12px 12px 0;
+}
+
+.acc-chat-msg.is-right .acc-chat-bubble {
+    background: var(--note-blue);
+    border-radius: 12px 12px 0 12px;
+}
+
+.acc-chat-meta {
+    font-size: 10px;
+    color: var(--text-subtle);
+}
+
+.acc-chat-sticker {
+    display: block;
+    max-width: 120px;
+    border-radius: 8px;
+}
+
+.acc-chat-sticker-missing {
+    font-style: italic;
+    color: var(--text-aa);
+}
+
 /* ---------- 加载 ---------- */
 
 .acc-loading {
@@ -674,6 +1025,19 @@
     #account-guest,
     #account-main {
         gap: 20px;
+    }
+
+    .acc-group {
+        gap: 12px;
+    }
+
+    .acc-group-head {
+        font-size: 17px;
+        letter-spacing: 2px;
+    }
+
+    .acc-group-grid {
+        gap: 18px;
     }
 
     #account-page .acc-pagehead .hero-title {

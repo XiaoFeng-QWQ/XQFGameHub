@@ -83,6 +83,8 @@
                 renderOverview(data);
                 showMain();
                 loadAccountTags();
+                loadChatHistoryList(1);
+                loadMessageManageList();
             })
             .catch(function () {
                 showGuest();
@@ -115,6 +117,17 @@
         $('stat-games').textContent = st.total_games || 0;
         $('stat-winrate').textContent = (st.win_rate || 0) + '%';
         $('stat-avgmsgs').textContent = st.avg_msgs || 0;
+
+        // 公开资料页入口（/player/{昵称}，未取到昵称时隐藏）
+        var profileLink = $('link-public-profile');
+        if (profileLink) {
+            if (d.nickname) {
+                profileLink.href = '/player/' + encodeURIComponent(d.nickname);
+                profileLink.style.display = '';
+            } else {
+                profileLink.style.display = 'none';
+            }
+        }
 
         // 改名冷却提示
         $('rename-hint').textContent = d.rename_hint || '';
@@ -582,7 +595,401 @@
     };
 
     // ============================================================
-    //  五、已登录操作
+    //  五、聊天记录回顾 / 对手留言管理
+    // ============================================================
+
+    var chatHistoryPage = 1;
+    var stickerMapCache = null;
+    var stickerMapRequest = null;
+
+    /** 表情映射（优先本地缓存，缺失时拉取一次用于渲染记录里的表情消息） */
+    function getStickerMap() {
+        if (stickerMapCache) return Promise.resolve(stickerMapCache);
+        if (!stickerMapRequest) {
+            stickerMapRequest = fetch('/api/sticker/list', { headers: authHeaders() })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    stickerMapCache = (res && res.stickers)
+                        ? handleStickersList(res)
+                        : (loadStickerCache() || {});
+                    return stickerMapCache;
+                })
+                .catch(function () {
+                    stickerMapCache = loadStickerCache() || {};
+                    return stickerMapCache;
+                });
+        }
+        return stickerMapRequest;
+    }
+
+    function emptyTip(el, text, isError) {
+        el.innerHTML = '';
+        var div = document.createElement('div');
+        div.className = 'acc-empty' + (isError ? ' is-error' : '');
+        div.textContent = text;
+        el.appendChild(div);
+    }
+
+    // ---------- 聊天记录回顾 ----------
+
+    var chatResultLabels = { win: '胜', lose: '负', draw: '平' };
+    var chatGuessLabels = { human: '猜人类', ai: '猜AI' };
+    var chatTruthLabels = { human: '对方是人类', ai: '对方是AI' };
+
+    function loadChatHistoryList(page) {
+        var listEl = $('chat-history-list');
+        if (!listEl || !getUserToken()) return;
+        chatHistoryPage = page || 1;
+        emptyTip(listEl, '加载中…');
+
+        fetch('/api/chat-history?page=' + chatHistoryPage, { headers: authHeaders() })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.error) { emptyTip(listEl, data.error, true); return; }
+                renderChatHistoryList(data || {});
+            })
+            .catch(function () { emptyTip(listEl, '加载失败，请稍后重试', true); });
+    }
+
+    function renderChatHistoryList(data) {
+        var listEl = $('chat-history-list');
+        var pagEl = $('chat-history-pagination');
+        var list = data.list || [];
+
+        if (!list.length) {
+            emptyTip(listEl, '暂无保存的聊天记录，对局结束后点「保存聊天记录」即可留档');
+            pagEl.innerHTML = '';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        list.forEach(function (item) {
+            var row = document.createElement('div');
+            row.className = 'acc-history-row';
+            row.dataset.id = item.id;
+
+            var time = item.created_at ? String(item.created_at).substring(0, 16).replace('T', ' ') : '';
+            var title = item.title || (item.player_name + ' vs ' + item.opponent_name);
+            var metaParts = [
+                chatGuessLabels[item.player_guess] || '未判定',
+                chatTruthLabels[item.opponent_truth] || '',
+                item.message_count + ' 条消息',
+                time
+            ].filter(Boolean);
+            if (item.likes) metaParts.push('❤ ' + item.likes);
+
+            row.innerHTML =
+                '<div class="acc-history-top">' +
+                    '<span class="acc-history-title">' + (item.title ? '🔖 ' : '') +
+                        escapeHtml(title) +
+                        (item.is_public ? '<span class="acc-history-badge">公开</span>' : '') +
+                    '</span>' +
+                    '<span class="acc-history-result is-' + escapeHtml(item.result || '') + '">' +
+                        escapeHtml(chatResultLabels[item.result] || '') + '</span>' +
+                '</div>' +
+                '<div class="acc-history-meta">' + escapeHtml(metaParts.join(' · ')) + '</div>';
+
+            row.addEventListener('click', function () { showChatHistoryDetail(item.id); });
+            listEl.appendChild(row);
+        });
+
+        var totalPages = Math.ceil((data.total || 0) / (data.page_size || 1));
+        pagEl.innerHTML = '';
+        if (totalPages <= 1) return;
+        for (var i = 1; i <= totalPages; i++) {
+            (function (n) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = n;
+                if (n === data.page) {
+                    btn.className = 'is-current';
+                } else {
+                    btn.addEventListener('click', function () { loadChatHistoryList(n); });
+                }
+                pagEl.appendChild(btn);
+            })(i);
+        }
+    }
+
+    function showChatHistoryDetail(id) {
+        var token = getUserToken();
+        if (!token || !id) return;
+
+        var overlay = $('chat-history-detail-overlay');
+        var titleEl = $('chat-detail-title');
+        var infoEl = $('chat-detail-info');
+        var msgEl = $('chat-detail-messages');
+
+        titleEl.textContent = '加载中…';
+        infoEl.innerHTML = '';
+        emptyTip(msgEl, '加载中…');
+        overlay.style.display = 'flex';
+
+        Promise.all([
+            fetch('/api/chat-history/detail?id=' + id, { headers: authHeaders() })
+                .then(function (r) { return r.json(); }),
+            getStickerMap()
+        ]).then(function (res) {
+            var data = res[0];
+            var stickerMap = res[1] || {};
+            if (!data || data.error) {
+                emptyTip(msgEl, (data && data.error) || '加载失败', true);
+                return;
+            }
+            renderChatHistoryDetail(id, data, stickerMap, titleEl, infoEl, msgEl);
+        }).catch(function () {
+            emptyTip(msgEl, '网络错误，请稍后重试', true);
+        });
+    }
+
+    function renderChatHistoryDetail(id, data, stickerMap, titleEl, infoEl, msgEl) {
+        var detailResultLabels = { win: '胜利', lose: '失败', draw: '平局' };
+        var time = data.created_at ? String(data.created_at).substring(0, 16).replace('T', ' ') : '';
+        var title = data.title || (data.player_name + ' vs ' + data.opponent_name);
+        var publicUrl = data.public_token
+            ? (window.location.origin + '/collection/' + data.public_token)
+            : '';
+
+        titleEl.textContent = title;
+
+        infoEl.innerHTML =
+            '<div class="acc-chat-summary">' +
+                '<span class="acc-chat-result">' + escapeHtml(detailResultLabels[data.result] || '??') + '</span>' +
+                '<span>' + escapeHtml(time) + '</span>' +
+                '<span>' + (data.message_count || 0) + ' 条消息</span>' +
+            '</div>' +
+            '<div class="acc-collect-box">' +
+                '<div class="acc-collect-label">收藏管理</div>' +
+                '<input type="text" id="detail-title-input" maxlength="100" placeholder="为此记录起个名字" value="' +
+                    escapeHtmlAttr(data.title || '') + '">' +
+                '<label class="acc-collect-check">' +
+                    '<input type="checkbox" id="detail-public-check"' + (data.is_public ? ' checked' : '') + '>' +
+                    ' 公开聊天记录' +
+                '</label>' +
+                '<div class="acc-inline" id="detail-public-link" style="display:' +
+                    (data.public_token ? 'flex' : 'none') + ';">' +
+                    '<input type="text" id="detail-public-url" readonly value="' + escapeHtmlAttr(publicUrl) + '">' +
+                    '<button class="doodle-btn" id="btn-copy-public-link" type="button">复制</button>' +
+                '</div>' +
+                '<button class="doodle-btn acc-cta" id="btn-detail-collection-save" type="button">保存</button>' +
+                '<div class="acc-collect-status" id="detail-collection-status"></div>' +
+            '</div>';
+
+        renderChatMessages(msgEl, data.messages, stickerMap);
+
+        bindCollectionActions(id);
+    }
+
+    function renderChatMessages(msgEl, messages, stickerMap) {
+        if (!messages || !messages.length) {
+            emptyTip(msgEl, '无聊天消息');
+            return;
+        }
+        msgEl.innerHTML = '';
+        messages.forEach(function (msg) {
+            var isRight = msg.side === 'right';
+            var contentHtml = escapeHtml(msg.text || '');
+            if (msg.sticker_id) {
+                var sName = escapeHtml(msg.sticker_name || msg.sticker_id);
+                var sUrl = resolveStickerUrl(msg.sticker_id, msg.sticker_url || '', stickerMap);
+                contentHtml = sUrl
+                    ? '<img class="acc-chat-sticker" src="' + escapeHtmlAttr(sUrl) + '" alt="' + sName + '" loading="lazy">'
+                    : '<span class="acc-chat-sticker-missing">[表情: ' + sName + ']</span>';
+            }
+
+            var wrap = document.createElement('div');
+            wrap.className = 'acc-chat-msg ' + (isRight ? 'is-right' : 'is-left');
+            wrap.innerHTML =
+                '<div class="acc-chat-bubble">' +
+                    '<div class="acc-chat-meta">' + escapeHtml(msg.sender || '') + ' · ' + escapeHtml(msg.time || '') + '</div>' +
+                    '<div class="acc-chat-text">' + contentHtml + '</div>' +
+                '</div>';
+            msgEl.appendChild(wrap);
+        });
+    }
+
+    function bindCollectionActions(id) {
+        var statusEl = $('detail-collection-status');
+        var linkArea = $('detail-public-link');
+        var urlInput = $('detail-public-url');
+        var publicCheck = $('detail-public-check');
+        var saveBtn = $('btn-detail-collection-save');
+
+        function setStatus(message, type) {
+            statusEl.textContent = message || '';
+            statusEl.style.display = message ? '' : 'none';
+            statusEl.classList.toggle('is-success', type === 'success');
+            statusEl.classList.toggle('is-error', type === 'error');
+        }
+
+        function collect(payload) {
+            return fetch('/api/chat-history/collect', {
+                method: 'POST',
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload)
+            }).then(function (r) { return r.json(); });
+        }
+
+        // 公开开关：立即生效
+        publicCheck.addEventListener('change', function () {
+            var isPublic = publicCheck.checked;
+            publicCheck.disabled = true;
+            setStatus('处理中…');
+            collect({ id: id, is_public: isPublic })
+                .then(function (res) {
+                    if (res && res.success) {
+                        if (isPublic && res.public_url) {
+                            urlInput.value = window.location.origin + res.public_url;
+                            linkArea.style.display = 'flex';
+                            setStatus('公开链接已生成', 'success');
+                        } else {
+                            linkArea.style.display = 'none';
+                            setStatus('已关闭公开', 'success');
+                        }
+                    } else {
+                        publicCheck.checked = !isPublic;
+                        setStatus((res && res.message) || '操作失败', 'error');
+                    }
+                    publicCheck.disabled = false;
+                })
+                .catch(function () {
+                    publicCheck.checked = !isPublic;
+                    publicCheck.disabled = false;
+                    setStatus('网络错误，请稍后重试', 'error');
+                });
+        });
+
+        $('btn-copy-public-link').addEventListener('click', function () {
+            var urlInput2 = $('detail-public-url');
+            urlInput2.select();
+            try { document.execCommand('copy'); } catch (e) { }
+            setStatus('链接已复制', 'success');
+        });
+
+        saveBtn.addEventListener('click', function () {
+            var title = $('detail-title-input').value.trim();
+            saveBtn.disabled = true;
+            saveBtn.textContent = '保存中…';
+            collect({ id: id, title: title || null })
+                .then(function (res) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '保存';
+                    if (res && res.success) {
+                        setStatus('已保存', 'success');
+                        loadChatHistoryList(chatHistoryPage);
+                    } else {
+                        setStatus((res && res.message) || '保存失败', 'error');
+                    }
+                })
+                .catch(function () {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '保存';
+                    setStatus('网络错误，请稍后重试', 'error');
+                });
+        });
+    }
+
+    // ---------- 对手留言管理 ----------
+
+    function loadMessageManageList() {
+        var listEl = $('message-manage-list');
+        if (!listEl || !getUserToken()) return;
+        emptyTip(listEl, '加载中…');
+
+        fetch('/api/player-messages', { headers: authHeaders() })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.error) { emptyTip(listEl, data.error, true); return; }
+                renderMessageList(listEl, data || {});
+            })
+            .catch(function () { emptyTip(listEl, '加载失败，请稍后重试', true); });
+    }
+
+    function renderMessageList(listEl, data) {
+        var allowLabel = $('message-allow-label');
+        var allowToggle = $('message-allow-toggle');
+        var messages = data.messages || [];
+
+        allowLabel.style.display = 'flex';
+        allowToggle.checked = data.allow_messages !== false;
+        allowToggle.onchange = function () {
+            fetch('/api/player-message/settings', {
+                method: 'POST',
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ allow_messages: allowToggle.checked })
+            }).then(function (r) { return r.json(); })
+                .then(function (res) {
+                    showTopToast((res && res.message) || '设置已更新', false);
+                })
+                .catch(function () {
+                    allowToggle.checked = !allowToggle.checked;
+                    showTopToast('网络错误，请稍后重试', true);
+                });
+        };
+
+        if (!messages.length) {
+            emptyTip(listEl, '暂无留言');
+            return;
+        }
+
+        listEl.innerHTML = '';
+        messages.forEach(function (msg) {
+            var hidden = !!msg.hidden;
+            var time = msg.created_at
+                ? new Date(msg.created_at * 1000).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '';
+
+            var row = document.createElement('div');
+            row.className = 'acc-msg-row';
+            row.innerHTML =
+                '<div class="acc-msg-body">' +
+                    '<span class="acc-msg-from">' + escapeHtml(msg.from || '') + '</span>' +
+                    '<span class="acc-msg-text' + (hidden ? ' is-hidden' : '') + '"> ' + escapeHtml(msg.text || '') + '</span>' +
+                    '<span class="acc-msg-time">' + escapeHtml(time) + '</span>' +
+                '</div>';
+
+            var btn = document.createElement('button');
+            btn.className = 'doodle-btn';
+            btn.type = 'button';
+            btn.textContent = hidden ? '显示' : '隐藏';
+            btn.addEventListener('click', function () {
+                btn.disabled = true;
+                fetch('/api/player-message/hide', {
+                    method: 'POST',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ message_id: msg.id, hidden: !hidden })
+                }).then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (res && res.success) {
+                            loadMessageManageList();
+                        } else {
+                            btn.disabled = false;
+                            showTopToast((res && res.error) || '操作失败', true);
+                        }
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        showTopToast('网络错误，请稍后重试', true);
+                    });
+            });
+            row.appendChild(btn);
+            listEl.appendChild(row);
+        });
+    }
+
+    function initChatDetailOverlay() {
+        var overlay = $('chat-history-detail-overlay');
+        if (!overlay) return;
+        $('btn-chat-detail-close').addEventListener('click', function () {
+            overlay.style.display = 'none';
+        });
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) overlay.style.display = 'none';
+        });
+    }
+
+    // ============================================================
+    //  六、已登录操作
     // ============================================================
 
     function initMainActions() {
@@ -664,6 +1071,7 @@
         $('btn-back').addEventListener('click', function () { window.location.href = '/'; });
         bindFold('guest-recover-toggle', 'guest-recover-body');
         bindFold('password-toggle', 'password-body');
+        initChatDetailOverlay();
         initGuestActions();
         initMainActions();
 

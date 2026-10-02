@@ -719,27 +719,7 @@
     <script src="https://testingcf.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
     <script src="/shared.js?v="></script>
     <script src="/hub-nav.js?v="></script>
-    <script src="/comment-widget.js?v="></script>
     <script src="/script.js?v="></script>
-    <script src="/temp-invite.js?v="></script>
-    <script>
-        // 临时聊天邀请（发起入口；复用 /ws 连接接收邀请，script.js 已把 temp_* 消息转发给 TempInvite.handleMessage）
-        document.addEventListener('DOMContentLoaded', function () {
-            if (window.TempInvite) {
-                window.TempInvite.init({ autoConnect: false });
-                var btn = document.getElementById('btn-temp-invite');
-                if (btn) btn.addEventListener('click', function () { window.TempInvite.openPanel(); });
-            }
-            // 未登录身份卡显隐（与海龟汤 / 五子棋 / 大厅保持一致）
-            var idCard = document.getElementById('identity-card');
-            var landingCard = document.querySelector('#landing-page .id-card');
-            var hasIdentity = !!(getUserToken() || getUserNickname());
-            if (idCard) idCard.style.display = hasIdentity ? 'none' : 'flex';
-            if (landingCard) landingCard.style.display = hasIdentity ? 'flex' : 'none';
-        });
-    </script>
-
-    <!-- 开放BOT申请弹窗 -->
 </body>
 
 </html>

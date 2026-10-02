@@ -157,6 +157,8 @@
                     <div class="acc-hero-foot">
                         <span class="acc-muted" id="rename-hint"></span>
                         <div class="acc-hero-actions">
+                            <a class="acc-link-btn" id="link-public-profile" href="/player/" target="_blank"
+                                rel="noopener">公开主页 →</a>
                             <a class="acc-link-btn" href="/weekly-report">全服周报 →</a>
                             <button class="acc-link-btn" id="btn-rename" type="button">
                                 <svg class="icon" viewBox="0 0 24 24">
@@ -169,91 +171,134 @@
                     </div>
                 </section>
 
-                <!-- ② 我的标签 -->
-                <section class="acc-panel acc-panel--yellow" id="account-tag-panel">
-                    <div class="hub-section-head">
-                        <span class="hub-section-title">我的标签</span>
-                        <span class="hub-section-note" id="account-tags-cap">最多佩戴 3 个</span>
-                    </div>
-                    <div id="account-tags-special"></div>
-                    <div id="account-tags-normal"></div>
-                    <div id="account-tags-empty" class="acc-muted" style="display:none;">还没有标签，去对局里赢取对手的评价吧～</div>
-                    <div id="account-tags-status" class="acc-tag-status" style="display:none;"></div>
-                    <button class="doodle-btn acc-tag-save" id="btn-save-account-tags" type="button">保存佩戴</button>
-                </section>
+                <!-- ===================== 内容管理 ===================== -->
+                <section class="acc-group">
+                    <h2 class="acc-group-head">
+                        <span class="acc-group-title">内容管理</span>
+                        <span class="acc-group-note">标签、表情与对局内容</span>
+                    </h2>
+                    <div class="acc-group-grid">
 
-                <!-- ③ 第三方绑定 -->
-                <section class="acc-panel acc-panel--green">
-                    <div class="hub-section-head">
-                        <span class="hub-section-title">第三方绑定</span>
-                    </div>
-                    <div id="oauth-binding-list"></div>
-                    <div id="oauth-bind-add" class="acc-oauth-add"></div>
-                    <div class="acc-muted acc-panel-note">绑定后可用对应平台一键登录，并可同步头像。</div>
-                </section>
-
-                <!-- ④ 表情管理 -->
-                <section class="acc-panel acc-panel--yellow">
-                    <div class="hub-section-head">
-                        <span class="hub-section-title">表情管理</span>
-                        <span class="hub-section-note">上传后由管理员审核</span>
-                    </div>
-
-                    <div class="acc-sticker-toolbar">
-                        <button class="doodle-btn" id="btn-sticker-upload" type="button">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <path d="M12 5v14M5 12h14" />
-                            </svg>
-                            上传表情
-                        </button>
-                        <input type="file" id="sticker-upload-input" accept="image/png,image/jpeg,image/gif,image/webp" multiple style="display:none;">
-                        <span class="acc-muted" id="sticker-manager-status">等待上传</span>
-                    </div>
-
-                    <div class="acc-sticker-tabs" role="tablist">
-                        <button type="button" class="acc-sticker-tab is-active" data-tab="mine">我的表情</button>
-                        <button type="button" class="acc-sticker-tab" data-tab="default">默认表情</button>
-                    </div>
-
-                    <div class="acc-sticker-grid" id="sticker-manager-grid"></div>
-
-                    <div class="acc-muted acc-panel-note">
-                        支持 PNG / JPG / GIF / WebP，单张不超过 2MB；我的表情需通过审核后才能发送。
-                    </div>
-                </section>
-
-                <!-- ⑤ 账号安全 -->
-                <section class="acc-panel acc-panel--safety">
-                    <div class="hub-section-head">
-                        <span class="hub-section-title">账号安全</span>
-                    </div>
-
-                    <div class="acc-fold">
-                        <button class="acc-fold-toggle" id="password-toggle" type="button" aria-expanded="false">
-                            <svg class="icon acc-fold-arrow" viewBox="0 0 24 24">
-                                <path d="M6 9l6 6 6-6" />
-                            </svg>
-                            修改密码
-                        </button>
-                        <div class="acc-fold-body" id="password-body" style="display:none;">
-                            <div class="acc-inline">
-                                <input id="new-password" type="password" placeholder="新密码（至少 6 位）"
-                                    autocomplete="new-password">
-                                <button class="doodle-btn" id="btn-set-password">保存</button>
+                        <!-- 我的标签 -->
+                        <section class="acc-panel acc-panel--yellow" id="account-tag-panel">
+                            <div class="hub-section-head">
+                                <span class="hub-section-title">我的标签</span>
+                                <span class="hub-section-note" id="account-tags-cap">最多佩戴 3 个</span>
                             </div>
-                            <div class="acc-muted">忘记密码时，用「昵称 + 密码」找回账号，请妥善保管。</div>
-                        </div>
-                    </div>
+                            <div id="account-tags-special"></div>
+                            <div id="account-tags-normal"></div>
+                            <div id="account-tags-empty" class="acc-muted" style="display:none;">还没有标签，去对局里赢取对手的评价吧～</div>
+                            <div id="account-tags-status" class="acc-tag-status" style="display:none;"></div>
+                            <button class="doodle-btn acc-tag-save" id="btn-save-account-tags" type="button">保存佩戴</button>
+                        </section>
 
-                    <div class="acc-danger-zone">
-                        <button class="doodle-btn danger" id="btn-logout">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                <polyline points="16 17 21 12 16 7" />
-                                <line x1="21" y1="12" x2="9" y2="12" />
-                            </svg>
-                            退出登录
-                        </button>
+                        <!-- 表情管理 -->
+                        <section class="acc-panel acc-panel--yellow">
+                            <div class="hub-section-head">
+                                <span class="hub-section-title">表情管理</span>
+                                <span class="hub-section-note">上传后由管理员审核</span>
+                            </div>
+
+                            <div class="acc-sticker-toolbar">
+                                <button class="doodle-btn" id="btn-sticker-upload" type="button">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <path d="M12 5v14M5 12h14" />
+                                    </svg>
+                                    上传表情
+                                </button>
+                                <input type="file" id="sticker-upload-input" accept="image/png,image/jpeg,image/gif,image/webp" multiple style="display:none;">
+                                <span class="acc-muted" id="sticker-manager-status">等待上传</span>
+                            </div>
+
+                            <div class="acc-sticker-tabs" role="tablist">
+                                <button type="button" class="acc-sticker-tab is-active" data-tab="mine">我的表情</button>
+                                <button type="button" class="acc-sticker-tab" data-tab="default">默认表情</button>
+                            </div>
+
+                            <div class="acc-sticker-grid" id="sticker-manager-grid"></div>
+
+                            <div class="acc-muted acc-panel-note">
+                                支持 PNG / JPG / GIF / WebP，单张不超过 2MB；我的表情需通过审核后才能发送。
+                            </div>
+                        </section>
+
+                        <!-- 聊天记录回顾 -->
+                        <section class="acc-panel acc-panel--pink">
+                            <div class="hub-section-head">
+                                <span class="hub-section-title">聊天记录回顾</span>
+                                <span class="hub-section-note">对局结束时保存</span>
+                            </div>
+                            <div id="chat-history-list" class="acc-history-list"></div>
+                            <div id="chat-history-pagination" class="acc-pagination"></div>
+                        </section>
+
+                        <!-- 对手留言管理 -->
+                        <section class="acc-panel acc-panel--blue">
+                            <div class="hub-section-head">
+                                <span class="hub-section-title">对手留言管理</span>
+                            </div>
+                            <label class="acc-msg-allow" id="message-allow-label" style="display:none;">
+                                <input type="checkbox" id="message-allow-toggle"> 允许他人留言
+                            </label>
+                            <div id="message-manage-list" class="acc-message-list"></div>
+                        </section>
+
+                    </div>
+                </section>
+
+                <!-- ===================== 账号设置 ===================== -->
+                <section class="acc-group">
+                    <h2 class="acc-group-head">
+                        <span class="acc-group-title">账号设置</span>
+                        <span class="acc-group-note">登录方式与密码安全</span>
+                    </h2>
+                    <div class="acc-group-grid">
+
+                        <!-- 第三方绑定 -->
+                        <section class="acc-panel acc-panel--green">
+                            <div class="hub-section-head">
+                                <span class="hub-section-title">第三方绑定</span>
+                            </div>
+                            <div id="oauth-binding-list"></div>
+                            <div id="oauth-bind-add" class="acc-oauth-add"></div>
+                            <div class="acc-muted acc-panel-note">绑定后可用对应平台一键登录，并可同步头像。</div>
+                        </section>
+
+                        <!-- 账号安全 -->
+                        <section class="acc-panel acc-panel--safety">
+                            <div class="hub-section-head">
+                                <span class="hub-section-title">账号安全</span>
+                            </div>
+
+                            <div class="acc-fold">
+                                <button class="acc-fold-toggle" id="password-toggle" type="button" aria-expanded="false">
+                                    <svg class="icon acc-fold-arrow" viewBox="0 0 24 24">
+                                        <path d="M6 9l6 6 6-6" />
+                                    </svg>
+                                    修改密码
+                                </button>
+                                <div class="acc-fold-body" id="password-body" style="display:none;">
+                                    <div class="acc-inline">
+                                        <input id="new-password" type="password" placeholder="新密码（至少 6 位）"
+                                            autocomplete="new-password">
+                                        <button class="doodle-btn" id="btn-set-password">保存</button>
+                                    </div>
+                                    <div class="acc-muted">忘记密码时，用「昵称 + 密码」找回账号，请妥善保管。</div>
+                                </div>
+                            </div>
+
+                            <div class="acc-danger-zone">
+                                <button class="doodle-btn danger" id="btn-logout">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                        <polyline points="16 17 21 12 16 7" />
+                                        <line x1="21" y1="12" x2="9" y2="12" />
+                                    </svg>
+                                    退出登录
+                                </button>
+                            </div>
+                        </section>
+
                     </div>
                 </section>
 
@@ -268,6 +313,25 @@
         <br>
         本项目基于 AGPL 协议开源：<a href="https://github.com/XiaoFeng-QWQ/TuringTalk" target="_blank" rel="noopener"
             style="text-decoration:underline;">github.com/XiaoFeng-QWQ/TuringTalk</a>
+    </div>
+
+    <!-- 聊天记录详情（点击「聊天记录回顾」中的条目打开） -->
+    <div id="chat-history-detail-overlay" style="display:none;">
+        <div class="clipboard-drawer">
+            <div class="paper-content doodle-border">
+                <div class="drawer-header">
+                    <h2 id="chat-detail-title">聊天记录详情</h2>
+                    <button class="doodle-btn" id="btn-chat-detail-close" style="padding:4px 8px;border:none;">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="chat-detail-info" class="acc-chat-info"></div>
+                <div id="chat-detail-messages" class="acc-chat-msgs"></div>
+            </div>
+        </div>
     </div>
 
     <script src="/shared.js?v="></script>
